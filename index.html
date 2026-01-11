@@ -2,36 +2,60 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyberpunk Particle System // GEMINI-MODULE-FIX</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cyberpunk Particle System // GEMINI-IOS-FIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
     
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; color: #00ffff; user-select: none; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; color: #00ffff; user-select: none; -webkit-user-select: none; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #video-input { position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: 0; }
+        
+        /* iOS 修正：不能 display:none，改用透明度，並確保有尺寸 */
+        #video-input { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 1px; 
+            height: 1px; 
+            opacity: 0; 
+            pointer-events: none; 
+            z-index: 0; 
+        }
+
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.4)); background-size: 100% 4px; position: absolute; width: 100%; height: 100%; opacity: 0.6; }
         .vignette { background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.9) 100%); position: absolute; width: 100%; height: 100%; }
-        .hud-corner { position: absolute; padding: 20px; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 5px #00ffff; }
-        .top-left { top: 0; left: 0; border-left: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 20px; }
-        .top-right { top: 0; right: 0; text-align: right; border-right: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 20px; }
-        .bottom-left { bottom: 0; left: 0; border-left: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 20px; }
-        .bottom-right { bottom: 0; right: 0; text-align: right; border-right: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 20px; }
+        .hud-corner { position: absolute; padding: 20px; font-size: 12px; letter-spacing: 1px; text-shadow: 0 0 5px #00ffff; }
+        
+        /* 調整手機版面配置 */
+        .top-left { top: safe-area-inset-top; left: 0; border-left: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 15px; }
+        .top-right { top: safe-area-inset-top; right: 0; text-align: right; border-right: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 15px; }
+        .bottom-left { bottom: safe-area-inset-bottom; left: 0; border-left: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 15px; }
+        .bottom-right { bottom: safe-area-inset-bottom; right: 0; text-align: right; border-right: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 15px; }
         
         .loading { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 18px; color: #00ffff; z-index: 20; text-align: center; white-space: pre-line; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid cyan;
+            font-size: 16px; color: #00ffff; z-index: 20; text-align: center; white-space: pre-line; background: rgba(0,0,0,0.8); padding: 20px; border: 1px solid cyan;
         }
+        
+        /* 除錯訊息顯示 */
+        #debug-log {
+            position: absolute; top: 50%; left: 0; width: 100%; text-align: center;
+            color: yellow; font-size: 12px; z-index: 15; pointer-events: none;
+            text-shadow: 1px 1px 0 #000;
+        }
+
         .status-active { color: #00ff88; }
         .status-offline { color: #ff0055; }
     </style>
 </head>
 <body>
 
-    <div class="loading" id="loader">SYSTEM REBOOTING (ES MODULE MODE)...</div>
+    <div class="loading" id="loader">SYSTEM BOOT (iOS OPTIMIZED)...</div>
+    <div id="debug-log">WAITING FOR VIDEO...</div>
 
-    <video id="video-input" playsinline></video>
+    <video id="video-input" playsinline webkit-playsinline autoplay muted></video>
+    
     <div id="canvas-container"></div>
 
     <div class="overlay">
@@ -44,18 +68,19 @@
     </div>
 
     <script type="module">
-        // 1. 直接從 CDN 導入模組，解決 FilesetResolver 未定義的問題
         import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
         import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
 
-        // --- 除錯工具 ---
         function logStatus(msg) {
             console.log(`[SYSTEM] ${msg}`);
             const loader = document.getElementById('loader');
             if(loader) loader.innerText += `\n> ${msg}`;
         }
 
-        // --- 設定參數 ---
+        function debug(msg) {
+            document.getElementById('debug-log').innerText = msg;
+        }
+
         const CONFIG = {
             particleCount: 12000,
             particleSize: 2.4,
@@ -70,7 +95,6 @@
             }
         };
 
-        // --- 全域變數 ---
         let scene, camera, renderer, particles, geometry;
         let positions, targetPositions, colors, initialPositions, velocities;
         let handLandmarker;
@@ -92,23 +116,19 @@
         textCanvas.width = 1920;
         textCanvas.height = 1080;
 
-        // --- 主程式初始化 ---
         async function init() {
             try {
-                logStatus("Modules Imported Successfully.");
-                logStatus("Initializing Three.js...");
+                logStatus("Modules Loaded.");
                 setupThreeJS();
-                
-                logStatus("Creating 12,000 Particles...");
                 createParticles();
                 
-                logStatus("Loading AI Model (WASM)...");
+                logStatus("Loading AI Model...");
                 await setupMediaPipe();
                 
-                logStatus("Requesting Camera Access...");
+                logStatus("Starting iOS Camera...");
                 await startCamera();
 
-                logStatus("System Fully Operational.");
+                logStatus("System Active.");
                 setTimeout(() => {
                     const l = document.getElementById('loader');
                     if(l) l.style.display = 'none';
@@ -118,12 +138,7 @@
                 animate();
             } catch (error) {
                 console.error(error);
-                logStatus(`FATAL ERROR: ${error.message}`);
-                const l = document.getElementById('loader');
-                if(l) {
-                    l.style.borderColor = "red";
-                    l.style.color = "red";
-                }
+                logStatus(`ERROR: ${error.message}`);
             }
         }
 
@@ -184,7 +199,6 @@
         }
 
         async function setupMediaPipe() {
-            // 這行是解決 "FilesetResolver is not defined" 的關鍵
             const vision = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
             );
@@ -198,117 +212,36 @@
             });
         }
 
+        // --- iOS 關鍵修復：startCamera ---
         async function startCamera() {
             video = document.getElementById('video-input');
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            
+            // 1. 移除寬高限制，讓 iOS 決定最佳解析度
+            const constraints = { 
                 video: { 
-                    facingMode: "user",
-                    width: { ideal: 1280 }, 
-                    height: { ideal: 720 }
-                } 
-            });
+                    facingMode: "user" 
+                    // width/height removed for compatibility
+                },
+                audio: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
             
+            // 2. iOS 必須明確呼叫 play()，並等待 Promise
             return new Promise((resolve) => {
-                if(video.readyState >= 2) {
-                    video.play();
-                    resolve();
-                } else {
-                    video.onloadeddata = () => {
-                        video.play();
+                video.onloadedmetadata = () => {
+                    video.play().then(() => {
+                        debug(`Cam Active: ${video.videoWidth}x${video.videoHeight}`);
                         resolve();
-                    };
-                }
+                    }).catch(e => {
+                        logStatus("Auto-play failed, tap to start.");
+                        // 如果自動播放失敗，通常是因為沒有使用者互動
+                        // 但在 getUserMedia 後通常會允許
+                        console.error(e);
+                    });
+                };
             });
-        }
-
-        // --- 邏輯與物理運算 ---
-        function generateTextTargets(text) {
-            textCtx.fillStyle = 'black';
-            textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
-            textCtx.font = '900 150px "Noto Sans TC", sans-serif';
-            textCtx.fillStyle = 'white';
-            textCtx.textAlign = 'center';
-            textCtx.textBaseline = 'middle';
-            textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
-
-            const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
-            const data = imageData.data;
-            const validPixels = [];
-            const step = 4; 
-            for (let y = 0; y < textCanvas.height; y += step) {
-                for (let x = 0; x < textCanvas.width; x += step) {
-                    if (data[(y * textCanvas.width + x) * 4] > 128) {
-                        validPixels.push({ x: x - textCanvas.width / 2, y: -(y - textCanvas.height / 2) });
-                    }
-                }
-            }
-            updateTargetPositionsFromPoints(validPixels, false);
-        }
-
-        function generateSphereTargets(centerX, centerY) {
-            const count = CONFIG.particleCount;
-            const radius = 150;
-            for (let i = 0; i < count; i++) {
-                const phi = Math.acos(1 - 2 * (i + 0.5) / count);
-                const theta = Math.PI * 40 * (i + 0.5) / count;
-                const x = centerX + radius * Math.sin(phi) * Math.cos(theta);
-                const y = centerY + radius * Math.sin(phi) * Math.sin(theta);
-                const z = radius * Math.cos(phi);
-                targetPositions[i * 3] = x;
-                targetPositions[i * 3 + 1] = y;
-                targetPositions[i * 3 + 2] = z;
-
-                const localX = x - centerX;
-                const localZ = z;
-                let isLine = false;
-                if (Math.abs(localX) < 5 || Math.abs(localZ) < 5) isLine = true;
-                if (isLine) {
-                    colors[i * 3] = CONFIG.colors.black.r;
-                    colors[i * 3 + 1] = CONFIG.colors.black.g;
-                    colors[i * 3 + 2] = CONFIG.colors.black.b;
-                } else {
-                    colors[i * 3] = CONFIG.colors.orange.r;
-                    colors[i * 3 + 1] = CONFIG.colors.orange.g;
-                    colors[i * 3 + 2] = CONFIG.colors.orange.b;
-                }
-            }
-            geometry.attributes.color.needsUpdate = true;
-        }
-
-        function generateNebulaTargets() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            for (let i = 0; i < CONFIG.particleCount; i++) {
-                targetPositions[i * 3] = (Math.random() - 0.5) * width;
-                targetPositions[i * 3 + 1] = (Math.random() - 0.5) * height;
-                targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
-            }
-        }
-
-        function updateTargetPositionsFromPoints(points, isRandomScatter = true) {
-            for (let i = 0; i < CONFIG.particleCount; i++) {
-                if (i < points.length) {
-                    targetPositions[i * 3] = points[i].x;
-                    targetPositions[i * 3 + 1] = points[i].y;
-                    targetPositions[i * 3 + 2] = 0;
-                } else {
-                    if (isRandomScatter) {
-                        targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
-                        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
-                        targetPositions[i * 3 + 2] = -500;
-                    }
-                }
-            }
-        }
-
-        function updateParticleColor(targetColor) {
-            for (let i = 0; i < CONFIG.particleCount; i++) {
-                colors[i * 3] = targetColor.r;
-                colors[i * 3 + 1] = targetColor.g;
-                colors[i * 3 + 2] = targetColor.b;
-            }
-            geometry.attributes.color.needsUpdate = true;
         }
 
         function onWindowResize() {
@@ -322,8 +255,17 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // --- 核心偵測迴圈 ---
         function detectGestures() {
-            if (!handLandmarker || !video.videoWidth) return;
+            // iOS 檢查：如果影片沒準備好，不要跑偵測
+            if (!handLandmarker || !video || video.readyState < 2) {
+                if(video) debug(`Waiting... State: ${video.readyState}`);
+                return;
+            }
+
+            // 清除 Debug 文字，表示正常運行中
+            debug(""); 
+
             const results = handLandmarker.detectForVideo(video, performance.now());
             
             state.leftHand.detected = false;
@@ -338,16 +280,17 @@
                     const pips = [6, 10, 14, 18];
                     let fingerCount = 0;
                     
+                    // 手指計數邏輯
                     if (handedness === "Right") {
                         if (landmarks[4].x < landmarks[3].x) fingerCount++;
                     } else {
                         if (landmarks[4].x > landmarks[3].x) fingerCount++;
                     }
-
                     for (let f = 0; f < 4; f++) {
                         if (landmarks[tips[f]].y < landmarks[pips[f]].y) fingerCount++;
                     }
 
+                    // 座標轉換
                     const centerX = (landmarks[9].x - 0.5) * -window.innerWidth;
                     const centerY = -(landmarks[9].y - 0.5) * window.innerHeight;
                     const tipX = (landmarks[8].x - 0.5) * -window.innerWidth;
@@ -362,7 +305,7 @@
                         state.rightHand.tipY = tipY;
                         document.getElementById('rh-status').innerText = "ONLINE";
                         document.getElementById('rh-status').className = "status-active";
-                        document.getElementById('rh-gesture').innerText = fingerCount >= 5 ? "OPEN (NEBULA)" : "INTERACT";
+                        document.getElementById('rh-gesture').innerText = fingerCount >= 5 ? "OPEN" : "POINT";
                     } else {
                         state.leftHand.detected = true;
                         state.leftHand.fingers = fingerCount;
@@ -384,6 +327,7 @@
             }
         }
 
+        // --- 遊戲邏輯與渲染 (不變) ---
         function updateLogic() {
             if (state.leftHand.detected && state.leftHand.fingers === 5 && 
                 state.rightHand.detected && state.rightHand.isOpen) {
@@ -410,8 +354,8 @@
                     case 0: break;
                     case 1: newText = "Hello"; newColor = CONFIG.colors.cyan; break;
                     case 2: newText = "Gemini3"; newColor = CONFIG.colors.yellow; break;
-                    case 3: newText = "The Truth Is Out There"; newColor = CONFIG.colors.magenta; break;
-                    case 4: newText = "Peace"; newColor = CONFIG.colors.green; break;
+                    case 3: newText = "非常好用"; newColor = CONFIG.colors.magenta; break;
+                    case 4: newText = "再見"; newColor = CONFIG.colors.green; break;
                     case 5: 
                         state.currentMode = 'CATCH';
                         newColor = CONFIG.colors.cyan;
@@ -517,6 +461,95 @@
             geometry.attributes.position.needsUpdate = true;
         }
 
+        // --- 文字生成 ---
+        function generateTextTargets(text) {
+            textCtx.fillStyle = 'black';
+            textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
+            textCtx.font = '900 150px "Noto Sans TC", sans-serif';
+            textCtx.fillStyle = 'white';
+            textCtx.textAlign = 'center';
+            textCtx.textBaseline = 'middle';
+            textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
+
+            const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
+            const data = imageData.data;
+            const validPixels = [];
+            const step = 4; 
+            for (let y = 0; y < textCanvas.height; y += step) {
+                for (let x = 0; x < textCanvas.width; x += step) {
+                    if (data[(y * textCanvas.width + x) * 4] > 128) {
+                        validPixels.push({ x: x - textCanvas.width / 2, y: -(y - textCanvas.height / 2) });
+                    }
+                }
+            }
+            updateTargetPositionsFromPoints(validPixels, false);
+        }
+
+        function generateSphereTargets(centerX, centerY) {
+            const count = CONFIG.particleCount;
+            const radius = 150;
+            for (let i = 0; i < count; i++) {
+                const phi = Math.acos(1 - 2 * (i + 0.5) / count);
+                const theta = Math.PI * 40 * (i + 0.5) / count;
+                const x = centerX + radius * Math.sin(phi) * Math.cos(theta);
+                const y = centerY + radius * Math.sin(phi) * Math.sin(theta);
+                const z = radius * Math.cos(phi);
+                targetPositions[i * 3] = x;
+                targetPositions[i * 3 + 1] = y;
+                targetPositions[i * 3 + 2] = z;
+
+                const localX = x - centerX;
+                const localZ = z;
+                let isLine = false;
+                if (Math.abs(localX) < 5 || Math.abs(localZ) < 5) isLine = true;
+                if (isLine) {
+                    colors[i * 3] = CONFIG.colors.black.r;
+                    colors[i * 3 + 1] = CONFIG.colors.black.g;
+                    colors[i * 3 + 2] = CONFIG.colors.black.b;
+                } else {
+                    colors[i * 3] = CONFIG.colors.orange.r;
+                    colors[i * 3 + 1] = CONFIG.colors.orange.g;
+                    colors[i * 3 + 2] = CONFIG.colors.orange.b;
+                }
+            }
+            geometry.attributes.color.needsUpdate = true;
+        }
+
+        function generateNebulaTargets() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                targetPositions[i * 3] = (Math.random() - 0.5) * width;
+                targetPositions[i * 3 + 1] = (Math.random() - 0.5) * height;
+                targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+            }
+        }
+
+        function updateTargetPositionsFromPoints(points, isRandomScatter = true) {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                if (i < points.length) {
+                    targetPositions[i * 3] = points[i].x;
+                    targetPositions[i * 3 + 1] = points[i].y;
+                    targetPositions[i * 3 + 2] = 0;
+                } else {
+                    if (isRandomScatter) {
+                        targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
+                        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
+                        targetPositions[i * 3 + 2] = -500;
+                    }
+                }
+            }
+        }
+
+        function updateParticleColor(targetColor) {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                colors[i * 3] = targetColor.r;
+                colors[i * 3 + 1] = targetColor.g;
+                colors[i * 3 + 2] = targetColor.b;
+            }
+            geometry.attributes.color.needsUpdate = true;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const now = performance.now();
@@ -532,9 +565,7 @@
             renderer.render(scene, camera);
         }
 
-        // 啟動 (因為是 module，所以直接呼叫 init)
         init();
-
     </script>
 </body>
 </html>
