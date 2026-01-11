@@ -3,34 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyberpunk System // IOS-FINAL</title>
+    <title>Cyberpunk System // DEBUG-MIRROR</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
     
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; color: #00ffff; user-select: none; -webkit-user-select: none; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         
-        /* 隱藏但保持渲染的 Video */
+        /* --- 關鍵修改：讓攝像頭可見，並放在最上層 --- */
         #video-input { 
-            position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; z-index: 0; 
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            width: 30vw; /* 顯示寬度 */
+            height: auto;
+            opacity: 0.8; 
+            z-index: 999; 
+            border: 2px solid #ff0055; /* 紅框標示 */
+            background: #222;
         }
 
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.4)); background-size: 100% 4px; position: absolute; width: 100%; height: 100%; opacity: 0.6; }
-        .vignette { background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.9) 100%); position: absolute; width: 100%; height: 100%; }
-        
         .hud-corner { 
             position: absolute; padding: 10px; font-size: 12px; letter-spacing: 1px; 
             text-shadow: 0 0 5px #00ffff; background: rgba(0,0,0,0.3); backdrop-filter: blur(2px);
         }
         
-        /* 手機版面優化：使用 safe-area */
         .top-left { top: max(10px, env(safe-area-inset-top)); left: 10px; border-left: 2px solid #00ffff; border-top: 2px solid #00ffff; }
         .top-right { top: max(10px, env(safe-area-inset-top)); right: 10px; text-align: right; border-right: 2px solid #00ffff; border-top: 2px solid #00ffff; }
         .bottom-left { bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; border-left: 2px solid #00ffff; border-bottom: 2px solid #00ffff; }
         .bottom-right { bottom: max(10px, env(safe-area-inset-bottom)); right: 10px; text-align: right; border-right: 2px solid #00ffff; border-bottom: 2px solid #00ffff; }
         
-        /* 啟動按鈕 (iOS 必須) */
         #start-btn {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             padding: 20px 40px; border: 2px solid #00ffff; background: rgba(0,0,0,0.8);
@@ -40,54 +44,39 @@
         }
 
         #debug-log {
-            position: absolute; top: 60%; left: 0; width: 100%; text-align: center;
+            position: absolute; top: 65%; left: 0; width: 100%; text-align: center;
             color: yellow; font-size: 10px; z-index: 15; pointer-events: none;
-            text-shadow: 1px 1px 0 #000;
+            background: rgba(0,0,0,0.5);
         }
 
         .status-active { color: #00ff88; font-weight: bold; }
         .status-offline { color: #ff0055; font-weight: bold; }
-        
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div id="start-btn">INITIALIZE SYSTEM<br><span style="font-size:12px">(TAP TO START)</span></div>
-    <div id="debug-log">LOADING MODULES...</div>
+    <div id="start-btn">SYSTEM START<br><span style="font-size:12px">(TAP HERE)</span></div>
+    <div id="debug-log">MODULES LOADING...</div>
 
     <video id="video-input" playsinline webkit-playsinline muted></video>
+    
     <div id="canvas-container"></div>
 
     <div class="overlay">
-        <div class="scanlines"></div>
-        <div class="vignette"></div>
-        <div class="hud-corner top-left">
-            <div>SYS: <span id="sys-status">BOOTING</span></div>
-            <div>FPS: <span id="fps">0</span></div>
-        </div>
-        <div class="hud-corner top-right">
-            <div>PARTICLES: 8,000</div>
-            <div>MODE: <span id="mode-display">IDLE</span></div>
-        </div>
-        <div class="hud-corner bottom-left">
-            <div>L-HAND: <span id="lh-status" class="status-offline">OFFLINE</span></div>
-            <div id="lh-gesture">--</div>
-        </div>
-        <div class="hud-corner bottom-right">
-            <div>R-HAND: <span id="rh-status" class="status-offline">OFFLINE</span></div>
-            <div id="rh-gesture">--</div>
-        </div>
+        <div class="hud-corner top-left"><div>SYS: <span id="sys-status">BOOTING</span></div><div>FPS: <span id="fps">0</span></div></div>
+        <div class="hud-corner top-right"><div>PARTICLES: 8,000</div><div>MODE: <span id="mode-display">IDLE</span></div></div>
+        <div class="hud-corner bottom-left"><div>L-HAND: <span id="lh-status" class="status-offline">OFFLINE</span></div><div id="lh-gesture">--</div></div>
+        <div class="hud-corner bottom-right"><div>R-HAND: <span id="rh-status" class="status-offline">OFFLINE</span></div><div id="rh-gesture">--</div></div>
     </div>
 
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
         import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
 
-        // --- 優化配置 ---
         const CONFIG = {
-            particleCount: 8000, // 降至 8000 以提升 iPhone 效能
-            particleSize: 2.8,   // 稍微放大粒子補償數量
+            particleCount: 8000,
+            particleSize: 2.8,
             returnSpeed: 0.18,
             colors: {
                 cyan: new THREE.Color(0x00FFFF),
@@ -123,31 +112,30 @@
 
         const textCanvas = document.createElement('canvas');
         const textCtx = textCanvas.getContext('2d');
-        textCanvas.width = 1024; // 降低解析度以提升效能
+        textCanvas.width = 1024;
         textCanvas.height = 576;
 
         async function init() {
             try {
-                debug("Loading 3D Engine...");
+                debug("Init 3D...");
                 setupThreeJS();
                 createParticles();
                 
-                debug("Loading AI (Wait)...");
+                debug("Loading Vision Model...");
                 await setupMediaPipe();
                 
-                // 顯示啟動按鈕
                 const btn = document.getElementById('start-btn');
                 btn.style.display = 'block';
                 btn.onclick = async () => {
                     btn.style.display = 'none';
-                    debug("Requesting Camera...");
+                    debug("Starting Camera...");
                     await startCamera();
                 };
 
                 generateTextTargets("Hello");
                 animate();
             } catch (error) {
-                debug(`ERROR: ${error.message}`);
+                debug(`ERR: ${error.message}`);
             }
         }
 
@@ -161,7 +149,7 @@
                 1, 2000
             );
             camera.position.z = 1000;
-            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false }); // 關閉反鋸齒提升效能
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             document.getElementById('canvas-container').appendChild(renderer.domElement);
@@ -181,7 +169,6 @@
                 positions[i * 3] = x;
                 positions[i * 3 + 1] = y;
                 positions[i * 3 + 2] = 0;
-                
                 colors[i * 3] = CONFIG.colors.cyan.r;
                 colors[i * 3 + 1] = CONFIG.colors.cyan.g;
                 colors[i * 3 + 2] = CONFIG.colors.cyan.b;
@@ -214,27 +201,36 @@
                 },
                 runningMode: "VIDEO",
                 numHands: 2,
-                minHandDetectionConfidence: 0.5,
-                minHandPresenceConfidence: 0.5,
-                minTrackingConfidence: 0.5
+                minHandDetectionConfidence: 0.3, // 降低門檻，更容易偵測
+                minHandPresenceConfidence: 0.3,
+                minTrackingConfidence: 0.3
             });
         }
 
         async function startCamera() {
             video = document.getElementById('video-input');
             try {
+                // 明確指定前置鏡頭
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "user" },
                     audio: false
                 });
                 video.srcObject = stream;
-                // iOS 必須等待 loadedmetadata 並手動 play
+                
+                // 強制播放處理
+                video.setAttribute('autoplay', '');
+                video.setAttribute('muted', '');
+                video.setAttribute('playsinline', '');
+                
                 video.onloadedmetadata = () => {
-                    video.play();
-                    isVideoPlaying = true;
-                    document.getElementById('sys-status').innerText = "ONLINE";
-                    document.getElementById('sys-status').className = "status-active";
-                    debug(""); // Clear debug msg
+                    video.play().then(() => {
+                        isVideoPlaying = true;
+                        document.getElementById('sys-status').innerText = "ONLINE";
+                        document.getElementById('sys-status').className = "status-active";
+                        debug(`CAM: ${video.videoWidth}x${video.videoHeight}`);
+                    }).catch(err => {
+                        debug("Play Error: " + err.message);
+                    });
                 };
             } catch (e) {
                 debug("CAM FAIL: " + e.message);
@@ -243,17 +239,17 @@
 
         function detectGestures() {
             if (!handLandmarker || !video || !isVideoPlaying) return;
-            
-            // 檢查影片時間是否真的在跑 (iOS 卡住檢測)
-            if (video.currentTime === 0) return;
+            // 檢查 video 是否有寬高
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
+            // --- 關鍵修復：確保 video 是可見的狀態下偵測 ---
             const results = handLandmarker.detectForVideo(video, performance.now());
             
-            // Debug: 顯示是否有抓到手
-            if (results.landmarks && results.landmarks.length > 0) {
-                // debug(`Hands: ${results.landmarks.length}`); 
+            // Debug Log: 如果有手，顯示手的數量
+            if (results.landmarks.length > 0) {
+                 debug(`HANDS DETECTED: ${results.landmarks.length}`);
             } else {
-                // debug("Scanning...");
+                 // debug("Searching...");
             }
 
             state.leftHand.detected = false;
@@ -262,15 +258,22 @@
             if (results.landmarks) {
                 for (let i = 0; i < results.landmarks.length; i++) {
                     const landmarks = results.landmarks[i];
-                    const handedness = results.handedness[i][0].categoryName; // "Left" or "Right"
+                    // 在 iOS 前鏡頭，左右手通常是相反的 (Mirror)
+                    // 所以我們直接用螢幕座標判斷左右
+                    const screenX = landmarks[9].x; // 0~1 (0是左, 1是右)
+
+                    const handedness = results.handedness[i][0].categoryName;
                     
-                    // 簡單手指計數
                     const tips = [8, 12, 16, 20];
                     const pips = [6, 10, 14, 18];
                     let fingerCount = 0;
                     
-                    // 拇指 (根據左右手邏輯)
-                    if (handedness === "Right") { // MediaPipe的Right通常是畫面左邊(使用者的左手)
+                    // 拇指檢測 (簡易版)
+                    // 如果是大拇指(4) 的 X 座標比起 根部(2) 更遠離手掌中心
+                    // 這裡簡化：比較 4 和 3 的 X
+                    const isRightHandVisual = handedness === "Left"; // MediaPipe "Left" = Visual Right
+                    
+                    if (isRightHandVisual) {
                          if (landmarks[4].x < landmarks[3].x) fingerCount++;
                     } else {
                          if (landmarks[4].x > landmarks[3].x) fingerCount++;
@@ -280,17 +283,13 @@
                         if (landmarks[tips[f]].y < landmarks[pips[f]].y) fingerCount++;
                     }
 
-                    // 座標轉換 (修正鏡像)
                     const centerX = (landmarks[9].x - 0.5) * -window.innerWidth;
                     const centerY = -(landmarks[9].y - 0.5) * window.innerHeight;
                     const tipX = (landmarks[8].x - 0.5) * -window.innerWidth;
                     const tipY = -(landmarks[8].y - 0.5) * window.innerHeight;
 
-                    // 注意：MediaPipe 的 "Left" 是指畫面中的左邊（通常是使用者的右手，如果沒鏡像）
-                    // 為了簡單，我們假設 handedness "Left" = UI上的 R-HAND， "Right" = UI上的 L-HAND
-                    // 這是因為前置鏡頭通常是鏡像的
-                    
-                    if (handedness === "Left") { // 畫面左邊 -> 其實是使用者的右手
+                    // 邏輯分配：MediaPipe 說 "Left" (其實是你的右手)，我們分配給 UI 的 Right Hand
+                    if (handedness === "Left") { 
                         state.rightHand.detected = true;
                         state.rightHand.isOpen = fingerCount >= 5;
                         state.rightHand.x = centerX;
@@ -298,7 +297,7 @@
                         state.rightHand.tipX = tipX;
                         state.rightHand.tipY = tipY;
                         updateStatus('rh', 'ONLINE', fingerCount >= 5 ? "OPEN" : "POINT");
-                    } else { // 畫面右邊 -> 其實是使用者的左手
+                    } else { 
                         state.leftHand.detected = true;
                         state.leftHand.fingers = fingerCount;
                         state.leftHand.x = centerX;
@@ -321,13 +320,11 @@
         }
 
         function updateLogic() {
-            // 大招邏輯
             if (state.leftHand.detected && state.leftHand.fingers === 5 && 
                 state.rightHand.detected && state.rightHand.isOpen) {
                 if (state.currentMode !== 'BASKETBALL') {
                     state.currentMode = 'BASKETBALL';
                     state.isUltimate = true;
-                    // 爆炸特效
                     for(let i=0; i<CONFIG.particleCount; i++) {
                          velocities[i*3] = (Math.random()-0.5) * 50;
                          velocities[i*3+1] = (Math.random()-0.5) * 50;
@@ -340,7 +337,6 @@
                 state.isUltimate = false;
             }
 
-            // 左手控制文字
             if (state.leftHand.detected) {
                 let newText = null;
                 let newColor = null;
@@ -349,8 +345,8 @@
                     case 0: break;
                     case 1: newText = "Hello"; newColor = CONFIG.colors.cyan; break;
                     case 2: newText = "Gemini3"; newColor = CONFIG.colors.yellow; break;
-                    case 3: newText = "the truth is out theree"; newColor = CONFIG.colors.magenta; break;
-                    case 4: newText = "886"; newColor = CONFIG.colors.green; break;
+                    case 3: newText = "非常好用"; newColor = CONFIG.colors.magenta; break;
+                    case 4: newText = "再見"; newColor = CONFIG.colors.green; break;
                     case 5: 
                         if (state.currentMode !== 'CATCH') {
                             state.currentMode = 'CATCH';
@@ -378,7 +374,6 @@
                 }
             }
 
-            // 右手互動
             if (state.rightHand.detected && state.rightHand.isOpen && !state.isUltimate) {
                 if (state.currentMode !== 'NEBULA') {
                     state.currentMode = 'NEBULA';
@@ -408,7 +403,6 @@
                 let vy = (ty - py) * CONFIG.returnSpeed;
                 let vz = (tz - pz) * CONFIG.returnSpeed;
 
-                // 物理特效 (大招)
                 if (state.isUltimate) {
                     vx += velocities[idx] * 0.95;
                     vy += velocities[idx+1] * 0.95;
@@ -416,12 +410,11 @@
                     velocities[idx+1] *= 0.9;
                 }
 
-                // 右手斥力
                 if (state.rightHand.detected && !state.rightHand.isOpen) {
                     const dx = px - state.rightHand.tipX;
                     const dy = py - state.rightHand.tipY;
                     const distSq = dx*dx + dy*dy;
-                    const radius = 120; // 斥力範圍
+                    const radius = 120; 
                     
                     if (distSq < radius * radius) {
                         const angle = Math.atan2(dy, dx);
@@ -435,7 +428,6 @@
                 positionsArr[idx + 1] += vy;
                 positionsArr[idx + 2] += vz;
                 
-                // 籃球旋轉特效
                 if (state.currentMode === 'BASKETBALL') {
                     const cx = state.leftHand.x;
                     const xRel = positionsArr[idx] - cx;
@@ -451,7 +443,7 @@
         function generateTextTargets(text) {
             textCtx.fillStyle = 'black';
             textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
-            textCtx.font = '900 120px "Noto Sans TC", sans-serif'; // 字體縮小
+            textCtx.font = '900 120px "Noto Sans TC", sans-serif'; 
             textCtx.fillStyle = 'white';
             textCtx.textAlign = 'center';
             textCtx.textBaseline = 'middle';
@@ -460,7 +452,7 @@
             const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
             const data = imageData.data;
             const validPixels = [];
-            const step = 6; // 增加間距，減少運算點
+            const step = 6; 
             for (let y = 0; y < textCanvas.height; y += step) {
                 for (let x = 0; x < textCanvas.width; x += step) {
                     if (data[(y * textCanvas.width + x) * 4] > 128) {
