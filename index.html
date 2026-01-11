@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Cyberpunk Particle System // GEMINI-FINAL</title>
+    <title>Cyberpunk Particle System // GEMINI-MODULE-FIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
     
     <style>
@@ -29,7 +29,7 @@
 </head>
 <body>
 
-    <div class="loading" id="loader">SYSTEM BOOT SEQUENCE STARTED...</div>
+    <div class="loading" id="loader">SYSTEM REBOOTING (ES MODULE MODE)...</div>
 
     <video id="video-input" playsinline></video>
     <div id="canvas-container"></div>
@@ -43,26 +43,19 @@
         <div class="hud-corner bottom-right"><div>R-HAND: <span id="rh-status" class="status-offline">NO SIGNAL</span></div><div id="rh-gesture">--</div></div>
     </div>
 
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js" 
-            onerror="alert('Error: Failed to load Three.js. Check your internet connection.')"></script>
+    <script type="module">
+        // 1. 直接從 CDN 導入模組，解決 FilesetResolver 未定義的問題
+        import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
+        import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
 
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"
-            onerror="alert('Error: Failed to load MediaPipe. Check your internet connection or firewall.')"></script>
-
-    <script>
+        // --- 除錯工具 ---
         function logStatus(msg) {
-            console.log(`[BOOT] ${msg}`);
+            console.log(`[SYSTEM] ${msg}`);
             const loader = document.getElementById('loader');
             if(loader) loader.innerText += `\n> ${msg}`;
         }
 
-        // 檢查庫是否載入成功
-        if (typeof THREE === 'undefined') {
-            logStatus("CRITICAL ERROR: Three.js not loaded.");
-        } else {
-            logStatus("Three.js Core Loaded.");
-        }
-
+        // --- 設定參數 ---
         const CONFIG = {
             particleCount: 12000,
             particleSize: 2.4,
@@ -77,6 +70,7 @@
             }
         };
 
+        // --- 全域變數 ---
         let scene, camera, renderer, particles, geometry;
         let positions, targetPositions, colors, initialPositions, velocities;
         let handLandmarker;
@@ -98,23 +92,26 @@
         textCanvas.width = 1920;
         textCanvas.height = 1080;
 
+        // --- 主程式初始化 ---
         async function init() {
             try {
-                logStatus("Initializing Graphics Engine...");
+                logStatus("Modules Imported Successfully.");
+                logStatus("Initializing Three.js...");
                 setupThreeJS();
                 
-                logStatus("Generating Particles...");
+                logStatus("Creating 12,000 Particles...");
                 createParticles();
                 
-                logStatus("Loading Neural Network (This may take a moment)...");
+                logStatus("Loading AI Model (WASM)...");
                 await setupMediaPipe();
                 
-                logStatus("Accessing Optics (Camera)...");
+                logStatus("Requesting Camera Access...");
                 await startCamera();
 
                 logStatus("System Fully Operational.");
                 setTimeout(() => {
-                    document.getElementById('loader').style.display = 'none';
+                    const l = document.getElementById('loader');
+                    if(l) l.style.display = 'none';
                 }, 1000);
 
                 generateTextTargets("Hello");
@@ -122,8 +119,11 @@
             } catch (error) {
                 console.error(error);
                 logStatus(`FATAL ERROR: ${error.message}`);
-                document.getElementById('loader').style.borderColor = "red";
-                document.getElementById('loader').style.color = "red";
+                const l = document.getElementById('loader');
+                if(l) {
+                    l.style.borderColor = "red";
+                    l.style.color = "red";
+                }
             }
         }
 
@@ -184,6 +184,7 @@
         }
 
         async function setupMediaPipe() {
+            // 這行是解決 "FilesetResolver is not defined" 的關鍵
             const vision = await FilesetResolver.forVisionTasks(
                 "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
             );
@@ -209,14 +210,19 @@
             video.srcObject = stream;
             
             return new Promise((resolve) => {
-                video.onloadeddata = () => {
+                if(video.readyState >= 2) {
                     video.play();
                     resolve();
-                };
+                } else {
+                    video.onloadeddata = () => {
+                        video.play();
+                        resolve();
+                    };
+                }
             });
         }
 
-        // --- GAME LOGIC (UNCHANGED) ---
+        // --- 邏輯與物理運算 ---
         function generateTextTargets(text) {
             textCtx.fillStyle = 'black';
             textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
@@ -404,8 +410,8 @@
                     case 0: break;
                     case 1: newText = "Hello"; newColor = CONFIG.colors.cyan; break;
                     case 2: newText = "Gemini3"; newColor = CONFIG.colors.yellow; break;
-                    case 3: newText = "非常好用"; newColor = CONFIG.colors.magenta; break;
-                    case 4: newText = "再見"; newColor = CONFIG.colors.green; break;
+                    case 3: newText = "The Truth Is Out There"; newColor = CONFIG.colors.magenta; break;
+                    case 4: newText = "Peace"; newColor = CONFIG.colors.green; break;
                     case 5: 
                         state.currentMode = 'CATCH';
                         newColor = CONFIG.colors.cyan;
@@ -526,8 +532,9 @@
             renderer.render(scene, camera);
         }
 
-        // 使用 DOMContentLoaded 確保 HTML 載入後才執行 JS
-        document.addEventListener('DOMContentLoaded', init);
+        // 啟動 (因為是 module，所以直接呼叫 init)
+        init();
+
     </script>
 </body>
 </html>
