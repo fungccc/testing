@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cyberpunk Particle System // GEMINI-PROTO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+            color: #00ffff;
+            user-select: none;
+        }
+
+        /* Container for Three.js */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Camera Feed (Hidden, utilized by MediaPipe) */
+        #video-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Cyberpunk Overlay Effects */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.4) 50%,
+                rgba(0,0,0,0.4)
+            );
+            background-size: 100% 4px;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0.6;
+        }
+
+        .vignette {
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.9) 100%);
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud-corner {
+            position: absolute;
+            padding: 20px;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px #00ffff;
+        }
+
+        .top-left { top: 0; left: 0; border-left: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 20px; }
+        .top-right { top: 0; right: 0; text-align: right; border-right: 2px solid #00ffff; border-top: 2px solid #00ffff; margin: 20px; }
+        .bottom-left { bottom: 0; left: 0; border-left: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 20px; }
+        .bottom-right { bottom: 0; right: 0; text-align: right; border-right: 2px solid #00ffff; border-bottom: 2px solid #00ffff; margin: 20px; }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #00ffff;
+            z-index: 20;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* Status Colors */
+        .status-active { color: #00ff88; }
+        .status-offline { color: #ff0055; }
+    </style>
+</head>
+<body>
+
+    <div class="loading" id="loader">SYSTEM INITIALIZING...</div>
+
+    <video id="video-input" playsinline></video>
+    <div id="canvas-container"></div>
+
+    <div class="overlay">
+        <div class="scanlines"></div>
+        <div class="vignette"></div>
+        
+        <div class="hud-corner top-left">
+            <div>SYS: ONLINE</div>
+            <div>FPS: <span id="fps">0</span></div>
+        </div>
+        <div class="hud-corner top-right">
+            <div>PARTICLES: 12,000</div>
+            <div>MODE: <span id="mode-display">IDLE</span></div>
+        </div>
+        <div class="hud-corner bottom-left">
+            <div>L-HAND: <span id="lh-status" class="status-offline">NO SIGNAL</span></div>
+            <div id="lh-gesture">--</div>
+        </div>
+        <div class="hud-corner bottom-right">
+            <div>R-HAND: <span id="rh-status" class="status-offline">NO SIGNAL</span></div>
+            <div id="rh-gesture">--</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js" crossorigin="anonymous"></script>
+
+    <script>
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            particleCount: 12000,
+            particleSize: 2.4,
+            returnSpeed: 0.16,
+            colors: {
+                cyan: new THREE.Color(0x00FFFF),
+                yellow: new THREE.Color(0xFFFF00),
+                magenta: new THREE.Color(0xFF00FF),
+                green: new THREE.Color(0x00FF88),
+                orange: new THREE.Color(0xFFA500),
+                black: new THREE.Color(0x111111)
+            }
+        };
+
+        // --- GLOBAL VARIABLES ---
+        let scene, camera, renderer, particles, geometry;
+        let positions, targetPositions, colors, initialPositions, velocities;
+        let handLandmarker;
+        let video;
+        let lastTime = 0;
+        let frameCount = 0;
+        
+        // Interaction State
+        const state = {
+            leftHand: { detected: false, fingers: 0, x: 0, y: 0, z: 0, gesture: 'None' },
+            rightHand: { detected: false, isOpen: false, x: 0, y: 0, z: 0, tipX: 0, tipY: 0 },
+            currentMode: 'TEXT', // TEXT, CATCH, NEBULA, BASKETBALL
+            activeText: 'Hello',
+            activeColor: CONFIG.colors.cyan,
+            isUltimate: false
+        };
+
+        // Text Generation Canvas
+        const textCanvas = document.createElement('canvas');
+        const textCtx = textCanvas.getContext('2d');
+        textCanvas.width = 1920;
+        textCanvas.height = 1080;
+
+        // --- INITIALIZATION ---
+        async function init() {
+            // 1. Setup Three.js
+            setupThreeJS();
+            
+            // 2. Setup Particles
+            createParticles();
+            
+            // 3. Setup MediaPipe
+            await setupMediaPipe();
+            
+            // 4. Start Loop
+            document.getElementById('loader').style.display = 'none';
+            generateTextTargets("Hello"); // Initial Text
+            animate();
+        }
+
+        function setupThreeJS() {
+            scene = new THREE.Scene();
+            
+            // Orthographic camera for easier 2D mapping
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustumSize = 1000;
+            camera = new THREE.OrthographicCamera(
+                frustumSize * aspect / -2, 
+                frustumSize * aspect / 2, 
+                frustumSize / 2, 
+                frustumSize / -2, 
+                1, 
+                2000
+            );
+            camera.position.z = 1000;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function createParticles() {
+            geometry = new THREE.BufferGeometry();
+            positions = new Float32Array(CONFIG.particleCount * 3);
+            targetPositions = new Float32Array(CONFIG.particleCount * 3);
+            initialPositions = new Float32Array(CONFIG.particleCount * 3);
+            colors = new Float32Array(CONFIG.particleCount * 3);
+            velocities = new Float32Array(CONFIG.particleCount * 3); // For physics simulation
+
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                // Random spread initially
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 1000;
+                const z = 0;
+
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+
+                initialPositions[i * 3] = x;
+                initialPositions[i * 3 + 1] = y;
+                initialPositions[i * 3 + 2] = z;
+
+                // Default color
+                colors[i * 3] = CONFIG.colors.cyan.r;
+                colors[i * 3 + 1] = CONFIG.colors.cyan.g;
+                colors[i * 3 + 2] = CONFIG.colors.cyan.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            // Create a simple circular texture for glow
+            const sprite = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/disc.png');
+
+            const material = new THREE.PointsMaterial({
+                size: CONFIG.particleSize,
+                map: sprite,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        // --- MEDIAPIPE SETUP ---
+        async function setupMediaPipe() {
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+            );
+            
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                    delegate: "GPU"
+                },
+                runningMode: "VIDEO",
+                numHands: 2
+            });
+
+            video = document.getElementById('video-input');
+            
+            // Get Camera
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: 1280, height: 720, facingMode: "user" } 
+            });
+            video.srcObject = stream;
+            await new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    video.play();
+                    resolve();
+                };
+            });
+        }
+
+        // --- LOGIC: TEXT & SHAPES ---
+
+        function generateTextTargets(text) {
+            // Clear canvas
+            textCtx.fillStyle = 'black';
+            textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
+            
+            // Draw text
+            textCtx.font = '900 150px "Noto Sans TC", sans-serif';
+            textCtx.fillStyle = 'white';
+            textCtx.textAlign = 'center';
+            textCtx.textBaseline = 'middle';
+            textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
+
+            // Sample pixels
+            const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
+            const data = imageData.data;
+            const validPixels = [];
+
+            // Optimization: Skip steps to save per-frame processing if scanning constantly
+            // But here we only scan on change.
+            const step = 4; 
+            for (let y = 0; y < textCanvas.height; y += step) {
+                for (let x = 0; x < textCanvas.width; x += step) {
+                    if (data[(y * textCanvas.width + x) * 4] > 128) {
+                        validPixels.push({
+                            x: x - textCanvas.width / 2,
+                            y: -(y - textCanvas.height / 2) // Flip Y for Three.js
+                        });
+                    }
+                }
+            }
+
+            // Map to targets
+            updateTargetPositionsFromPoints(validPixels, false);
+        }
+
+        function generateSphereTargets(centerX, centerY) {
+            // Fibonacci Sphere
+            const count = CONFIG.particleCount;
+            const radius = 150; // Basketball size
+
+            for (let i = 0; i < count; i++) {
+                const phi = Math.acos(1 - 2 * (i + 0.5) / count);
+                const theta = Math.PI * 40 * (i + 0.5) / count; // Golden angle approx
+
+                const x = centerX + radius * Math.sin(phi) * Math.cos(theta);
+                const y = centerY + radius * Math.sin(phi) * Math.sin(theta);
+                const z = radius * Math.cos(phi);
+
+                targetPositions[i * 3] = x;
+                targetPositions[i * 3 + 1] = y;
+                targetPositions[i * 3 + 2] = z;
+
+                // Color Logic for Basketball (Simulation of lines)
+                // Use geometry to determine lines
+                const localX = x - centerX;
+                const localY = y - centerY;
+                const localZ = z;
+                
+                let isLine = false;
+                // Simple cross lines + one circle
+                if (Math.abs(localX) < 5 || Math.abs(localZ) < 5) isLine = true;
+                
+                if (isLine) {
+                    colors[i * 3] = CONFIG.colors.black.r;
+                    colors[i * 3 + 1] = CONFIG.colors.black.g;
+                    colors[i * 3 + 2] = CONFIG.colors.black.b;
+                } else {
+                    colors[i * 3] = CONFIG.colors.orange.r;
+                    colors[i * 3 + 1] = CONFIG.colors.orange.g;
+                    colors[i * 3 + 2] = CONFIG.colors.orange.b;
+                }
+            }
+            geometry.attributes.color.needsUpdate = true;
+        }
+
+        function generateNebulaTargets() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                targetPositions[i * 3] = (Math.random() - 0.5) * width;
+                targetPositions[i * 3 + 1] = (Math.random() - 0.5) * height;
+                targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+            }
+        }
+
+        function updateTargetPositionsFromPoints(points, isRandomScatter = true) {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                if (i < points.length) {
+                    targetPositions[i * 3] = points[i].x;
+                    targetPositions[i * 3 + 1] = points[i].y;
+                    targetPositions[i * 3 + 2] = 0;
+                } else {
+                    // Excess particles float in background
+                    if (isRandomScatter) {
+                        targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
+                        targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
+                        targetPositions[i * 3 + 2] = -500; // Background
+                    }
+                }
+            }
+        }
+
+        function updateParticleColor(targetColor) {
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                // Lerp current color to target is expensive, just hard set for this demo
+                // Or gradual update
+                colors[i * 3] = targetColor.r;
+                colors[i * 3 + 1] = targetColor.g;
+                colors[i * 3 + 2] = targetColor.b;
+            }
+            geometry.attributes.color.needsUpdate = true;
+        }
+
+
+        // --- MAIN LOOP ---
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const frustumSize = 1000;
+            
+            camera.left = -frustumSize * aspect / 2;
+            camera.right = frustumSize * aspect / 2;
+            camera.top = frustumSize / 2;
+            camera.bottom = -frustumSize / 2;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function detectGestures() {
+            if (!handLandmarker || !video.videoWidth) return;
+
+            const results = handLandmarker.detectForVideo(video, performance.now());
+            
+            // Reset states
+            state.leftHand.detected = false;
+            state.rightHand.detected = false;
+
+            if (results.landmarks) {
+                for (let i = 0; i < results.landmarks.length; i++) {
+                    const landmarks = results.landmarks[i];
+                    const handedness = results.handedness[i][0].categoryName; // "Left" or "Right"
+                    
+                    // MediaPipe Mirrors: Input "Left" is actually user's Right hand visually if mirrored
+                    // But we want Logical Left/Right. Let's assume standard webcam mirror.
+                    // "Left" in array usually means Left hand of the person.
+                    
+                    // Count fingers
+                    const tips = [8, 12, 16, 20];
+                    const pips = [6, 10, 14, 18];
+                    let fingerCount = 0;
+                    
+                    // Thumb logic (x-axis)
+                    if (handedness === "Right") {
+                        if (landmarks[4].x < landmarks[3].x) fingerCount++;
+                    } else {
+                        if (landmarks[4].x > landmarks[3].x) fingerCount++;
+                    }
+
+                    // Other fingers (y-axis)
+                    for (let f = 0; f < 4; f++) {
+                        if (landmarks[tips[f]].y < landmarks[pips[f]].y) fingerCount++;
+                    }
+
+                    // Hand Center Mapping (Video [0,1] -> Scene Coordinates)
+                    const centerX = (landmarks[9].x - 0.5) * -window.innerWidth; // Flip X
+                    const centerY = -(landmarks[9].y - 0.5) * window.innerHeight; // Flip Y
+                    
+                    // Index Tip Mapping
+                    const tipX = (landmarks[8].x - 0.5) * -window.innerWidth;
+                    const tipY = -(landmarks[8].y - 0.5) * window.innerHeight;
+
+                    if (handedness === "Right") {
+                        state.rightHand.detected = true;
+                        state.rightHand.isOpen = fingerCount >= 5;
+                        state.rightHand.x = centerX;
+                        state.rightHand.y = centerY;
+                        state.rightHand.tipX = tipX;
+                        state.rightHand.tipY = tipY;
+                        document.getElementById('rh-status').innerText = "ONLINE";
+                        document.getElementById('rh-status').className = "status-active";
+                        document.getElementById('rh-gesture').innerText = fingerCount >= 5 ? "OPEN (NEBULA)" : "INTERACT";
+                    } else {
+                        state.leftHand.detected = true;
+                        state.leftHand.fingers = fingerCount;
+                        state.leftHand.x = centerX;
+                        state.leftHand.y = centerY;
+                        document.getElementById('lh-status').innerText = "ONLINE";
+                        document.getElementById('lh-status').className = "status-active";
+                        document.getElementById('lh-gesture').innerText = `CMD: ${fingerCount}`;
+                    }
+                }
+            }
+
+            if (!state.leftHand.detected) {
+                 document.getElementById('lh-status').innerText = "OFFLINE";
+                 document.getElementById('lh-status').className = "status-offline";
+            }
+            if (!state.rightHand.detected) {
+                 document.getElementById('rh-status').innerText = "OFFLINE";
+                 document.getElementById('rh-status').className = "status-offline";
+            }
+        }
+
+        function updateLogic() {
+            // 1. Check Ultimate Move
+            if (state.leftHand.detected && state.leftHand.fingers === 5 && 
+                state.rightHand.detected && state.rightHand.isOpen) {
+                
+                if (state.currentMode !== 'BASKETBALL') {
+                    state.currentMode = 'BASKETBALL';
+                    state.isUltimate = true;
+                    // Add jump impulse
+                    for(let i=0; i<CONFIG.particleCount; i++) {
+                        velocities[i*3 + 1] += (Math.random() * 10 + 10); // Jump up
+                    }
+                }
+                
+                generateSphereTargets(state.leftHand.x, state.leftHand.y + 100); // Float above palm
+                document.getElementById('mode-display').innerText = "ULTIMATE";
+                return; // Skip other logic
+            } else {
+                state.isUltimate = false;
+            }
+
+            // 2. Left Hand Command
+            if (state.leftHand.detected) {
+                let newText = null;
+                let newColor = null;
+
+                switch(state.leftHand.fingers) {
+                    case 0: break; // Maintain
+                    case 1: newText = "Hello"; newColor = CONFIG.colors.cyan; break;
+                    case 2: newText = "Gemini3"; newColor = CONFIG.colors.yellow; break;
+                    case 3: newText = "非常好用"; newColor = CONFIG.colors.magenta; break;
+                    case 4: newText = "再見"; newColor = CONFIG.colors.green; break;
+                    case 5: 
+                        state.currentMode = 'CATCH';
+                        newColor = CONFIG.colors.cyan;
+                        document.getElementById('mode-display').innerText = "CATCH MODE";
+                        break;
+                }
+
+                if (state.leftHand.fingers < 5 && newText && newText !== state.activeText) {
+                    state.activeText = newText;
+                    state.currentMode = 'TEXT';
+                    state.activeColor = newColor;
+                    generateTextTargets(newText);
+                    updateParticleColor(newColor);
+                    document.getElementById('mode-display').innerText = "TEXT MODE";
+                }
+
+                // CATCH MODE LOGIC
+                if (state.currentMode === 'CATCH') {
+                    // Targets become the hand palm
+                    for(let i=0; i<CONFIG.particleCount; i++) {
+                         // Fibonacci sphere scaled down inside hand? Or just noise cloud?
+                         // Let's make them flow into the hand
+                         targetPositions[i*3] = state.leftHand.x + (Math.random()-0.5)*100;
+                         targetPositions[i*3 + 1] = state.leftHand.y + (Math.random()-0.5)*100 + 50;
+                         targetPositions[i*3 + 2] = (Math.random()-0.5)*100;
+                    }
+                }
+            }
+
+            // 3. Right Hand Logic (Nebula)
+            if (state.rightHand.detected && state.rightHand.isOpen && !state.isUltimate) {
+                if (state.currentMode !== 'NEBULA') {
+                    state.currentMode = 'NEBULA';
+                    generateNebulaTargets();
+                    updateParticleColor(CONFIG.colors.cyan);
+                    document.getElementById('mode-display').innerText = "NEBULA MODE";
+                }
+            } else if (state.currentMode === 'NEBULA' && !state.rightHand.isOpen) {
+                // Revert to text if right hand closes
+                state.currentMode = 'TEXT';
+                generateTextTargets(state.activeText);
+                updateParticleColor(state.activeColor);
+            }
+        }
+
+        function updatePhysics() {
+            const positionsArr = geometry.attributes.position.array;
+            
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                const idx = i * 3;
+                let px = positionsArr[idx];
+                let py = positionsArr[idx + 1];
+                let pz = positionsArr[idx + 2];
+
+                let tx = targetPositions[idx];
+                let ty = targetPositions[idx + 1];
+                let tz = targetPositions[idx + 2];
+
+                // Base movement (Spring/Lerp)
+                let vx = (tx - px) * CONFIG.returnSpeed;
+                let vy = (ty - py) * CONFIG.returnSpeed;
+                let vz = (tz - pz) * CONFIG.returnSpeed;
+
+                // Ultimate Mode Gravity/Bounce
+                if (state.isUltimate) {
+                    // Add existing velocity momentum (simulating physics)
+                    vx += velocities[idx] * 0.9;
+                    vy += velocities[idx] * 0.9;
+                    vz += velocities[idx] * 0.9;
+                    
+                    // Damping the external velocity array
+                    velocities[idx] *= 0.9;
+                    velocities[idx+1] *= 0.9;
+                    velocities[idx+2] *= 0.9;
+                }
+
+                // Right Hand Interaction
+                if (state.rightHand.detected) {
+                    const dx = px - state.rightHand.tipX;
+                    const dy = py - state.rightHand.tipY;
+                    const distSq = dx*dx + dy*dy;
+                    
+                    if (state.rightHand.isOpen) {
+                        // RIPPLE EFFECT (Sine wave based on distance)
+                        if (state.currentMode === 'NEBULA') {
+                            const dist = Math.sqrt(distSq);
+                            const ripple = Math.sin(dist * 0.05 - frameCount * 0.2) * 20 * Math.exp(-dist * 0.005);
+                            vz += ripple; // Affect Z for 3D wave
+                        }
+                    } else {
+                        // SCATTER/REPULSION (Planar)
+                        const radius = 150;
+                        if (distSq < radius * radius) {
+                            const dist = Math.sqrt(distSq);
+                            const force = (radius - dist) / radius; // 0 to 1
+                            const angle = Math.atan2(dy, dx);
+                            
+                            const pushStr = 50 * force;
+                            
+                            vx += Math.cos(angle) * pushStr;
+                            vy += Math.sin(angle) * pushStr;
+                            // No Z change requested
+                        }
+                    }
+                }
+
+                // Apply velocity
+                positionsArr[idx] += vx;
+                positionsArr[idx + 1] += vy;
+                positionsArr[idx + 2] += vz;
+                
+                // Rotation for Basketball
+                if (state.currentMode === 'BASKETBALL') {
+                    // Simple rotation around Y axis relative to center
+                    const cx = state.leftHand.x;
+                    const cz = 0;
+                    const xRel = positionsArr[idx] - cx;
+                    const zRel = positionsArr[idx + 2] - cz;
+                    
+                    const rotSpeed = 0.05;
+                    const xNew = xRel * Math.cos(rotSpeed) - zRel * Math.sin(rotSpeed);
+                    const zNew = xRel * Math.sin(rotSpeed) + zRel * Math.cos(rotSpeed);
+                    
+                    positionsArr[idx] = cx + xNew;
+                    positionsArr[idx+2] = cz + zNew;
+                }
+            }
+
+            geometry.attributes.position.needsUpdate = true;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            if (now - lastTime > 1000) {
+                document.getElementById('fps').innerText = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+            frameCount++;
+
+            detectGestures();
+            updateLogic();
+            updatePhysics();
+
+            renderer.render(scene, camera);
+        }
+
+        // Start
+        window.onload = init;
+
+    </script>
+</body>
+</html>
