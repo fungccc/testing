@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyberpunk AR // ULTIMATE CONFIG</title>
+    <title>Cyberpunk AR // CONFIG V2</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
     
     <style>
@@ -15,16 +15,21 @@
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; color: var(--cyan); user-select: none; -webkit-user-select: none; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; mix-blend-mode: screen; transition: filter 0.3s; }
         
-        /* AR Background */
+        /* AR Background - 預設帶有濾鏡，透過 JS 控制 */
         #video-input { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             object-fit: cover; transform: scaleX(-1); z-index: 0;
-            opacity: 0.6; filter: contrast(1.2) saturate(0.8) hue-rotate(180deg);
+            opacity: 0.6; 
+            transition: all 0.5s; /* 讓濾鏡切換有過渡效果 */
         }
+        /* 濾鏡 Class */
+        .filter-cyber { filter: contrast(1.2) saturate(0.8) hue-rotate(180deg); }
+        .filter-none { filter: none; }
+
         .scanlines {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;
             background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.5) 2px, rgba(0,0,0,0) 2px);
-            background-size: 100% 4px;
+            background-size: 100% 4px; opacity: 0.5;
         }
 
         /* HUD Elements */
@@ -45,23 +50,11 @@
             position: relative; overflow: hidden; transition: all 0.3s;
         }
         .cyber-btn:hover { background: var(--cyan); color: #000; }
-        .cyber-btn::before {
-            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(0,255,255,0.3), transparent);
-            transform: rotate(45deg); animation: shine 3s infinite;
-        }
-        @keyframes shine { 0% { left: -100%; } 100% { left: 100%; } }
-
-        #start-btn {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            padding: 15px 30px; font-size: 20px; z-index: 100;
-        }
         
-        #settings-toggle {
-            padding: 8px 12px; font-size: 16px; z-index: 50;
-        }
+        #start-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 30px; font-size: 20px; z-index: 100; }
+        #settings-toggle { padding: 8px 12px; font-size: 16px; z-index: 50; }
 
-        /* --- SETTINGS PANEL (全新的設定介面) --- */
+        /* --- SETTINGS PANEL --- */
         #settings-panel {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--dark-bg); z-index: 200;
@@ -72,72 +65,28 @@
         }
         #settings-panel.active { transform: translateX(0); }
         
-        /* 掃描線背景動畫 */
-        #settings-panel::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 255, 0.05) 3px);
-            pointer-events: none; animation: panelScan 10s linear infinite;
-        }
-        @keyframes panelScan { from { background-position: 0 0; } to { background-position: 0 100%; } }
-
-        .panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 30px; border-bottom: 2px solid var(--cyan); padding-bottom: 10px;
-        }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--cyan); padding-bottom: 10px; }
         .panel-title { font-size: 24px; letter-spacing: 2px; text-shadow: 0 0 10px var(--cyan); }
-        
         .setting-group { margin-bottom: 25px; }
         .group-title { font-size: 14px; color: var(--pink); margin-bottom: 10px; letter-spacing: 1px; }
 
-        /* --- 未來感拖曳滑塊 (Digital Scrubber) --- */
-        .setting-row {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px; padding: 10px; background: rgba(0,255,255,0.05);
-            border-left: 3px solid var(--cyan);
-        }
+        /* Scrubber Control */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px; background: rgba(0,255,255,0.05); border-left: 3px solid var(--cyan); }
         .setting-label { font-size: 14px; }
+        .scrubber-control { display: flex; align-items: center; cursor: ew-resize; background: rgba(0,0,0,0.5); border: 1px solid var(--cyan); padding: 5px; width: 180px; justify-content: center; }
+        .scrubber-control.dragging { background: rgba(0,255,255,0.2); }
+        .scrubber-arrow { font-size: 18px; padding: 0 10px; color: rgba(0,255,255,0.5); }
+        .scrubber-value { font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold; width: 80px; text-align: center; }
         
-        .scrubber-control {
-            display: flex; align-items: center; cursor: ew-resize;
-            background: rgba(0,0,0,0.5); border: 1px solid var(--cyan);
-            padding: 5px; position: relative; width: 180px; justify-content: center;
-            transition: all 0.2s;
-        }
-        .scrubber-control:hover, .scrubber-control.dragging {
-            background: rgba(0,255,255,0.1); box-shadow: 0 0 15px rgba(0,255,255,0.3);
-            border-color: #fff;
-        }
-        .scrubber-arrow { font-size: 18px; padding: 0 10px; color: rgba(0,255,255,0.5); transition: all 0.2s; }
-        .scrubber-control:hover .scrubber-arrow { color: var(--cyan); text-shadow: 0 0 5px var(--cyan); }
-        .scrubber-control.dragging .scrubber-arrow { color: #fff; }
-
-        .scrubber-value {
-            font-family: 'Courier New', monospace; font-size: 18px; font-weight: bold;
-            width: 80px; text-align: center; position: relative; overflow: hidden;
-        }
-        /* 數值滾動時的數位干擾效果 */
-        .scrubber-control.dragging .scrubber-value::after {
-            content: attr(data-val); position: absolute; top: 0; left: 0; width: 100%;
-            color: rgba(255,0,85,0.8); clip-path: inset(50% 0 0 0);
-            animation: glitch 0.2s infinite; opacity: 0.5;
-        }
-        @keyframes glitch {
-            0% { transform: translate(2px, -2px); }
-            50% { transform: translate(-2px, 2px); }
-            100% { transform: translate(2px, 2px); }
-        }
-
         /* 隱藏主介面當設定打開時 */
-        body.settings-open .hud-corner, body.settings-open #canvas-container {
-            filter: blur(5px) brightness(0.5); pointer-events: none;
-        }
+        body.settings-open .hud-corner, body.settings-open #canvas-container { filter: blur(5px) brightness(0.5); pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="start-btn" class="cyber-btn">INITIALIZE AR SYSTEM</div>
     
-    <video id="video-input" playsinline webkit-playsinline muted></video>
+    <video id="video-input" class="filter-cyber" playsinline webkit-playsinline muted></video>
     <div class="scanlines"></div>
     <div id="canvas-container"></div>
 
@@ -160,7 +109,28 @@
         </div>
 
         <div class="setting-group">
-            <div class="group-title">// PERFORMANCE & CORE //</div>
+            <div class="group-title">// CAMERA & BACKGROUND //</div>
+            
+            <div class="setting-row">
+                <div class="setting-label">CYBER FILTER (0=OFF)</div>
+                <div class="scrubber-control" data-target="cyberFilter" data-min="0" data-max="1" data-step="1">
+                    <span class="scrubber-arrow"><</span>
+                    <span class="scrubber-value" data-val="1">1</span> <span class="scrubber-arrow">></span>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-label">CAMERA BRIGHTNESS</div>
+                <div class="scrubber-control" data-target="bgOpacity" data-min="0.0" data-max="1.0" data-step="0.1" data-float="true">
+                    <span class="scrubber-arrow"><</span>
+                    <span class="scrubber-value" data-val="0.6">0.6</span>
+                    <span class="scrubber-arrow">></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <div class="group-title">// PERFORMANCE //</div>
             <div class="setting-row">
                 <div class="setting-label">PARTICLE COUNT</div>
                 <div class="scrubber-control" data-target="particleCount" data-min="1000" data-max="20000" data-step="500">
@@ -170,7 +140,7 @@
                 </div>
             </div>
             <div class="setting-row">
-                <div class="setting-label">RENDER SCALE (SCREEN SIZE)</div>
+                <div class="setting-label">RENDER SCALE</div>
                 <div class="scrubber-control" data-target="renderScale" data-min="0.5" data-max="2.0" data-step="0.1" data-float="true">
                     <span class="scrubber-arrow"><</span>
                     <span class="scrubber-value" data-val="1.0">1.0x</span>
@@ -180,27 +150,7 @@
         </div>
 
         <div class="setting-group">
-            <div class="group-title">// VISUALS & PHYSICS //</div>
-            <div class="setting-row">
-                <div class="setting-label">PARTICLE SIZE</div>
-                <div class="scrubber-control" data-target="particleSize" data-min="1.0" data-max="10.0" data-step="0.1" data-float="true">
-                    <span class="scrubber-arrow"><</span>
-                    <span class="scrubber-value" data-val="3.0">3.0</span>
-                    <span class="scrubber-arrow">></span>
-                </div>
-            </div>
-             <div class="setting-row">
-                <div class="setting-label">RETURN SPEED (DAMPING)</div>
-                <div class="scrubber-control" data-target="returnSpeed" data-min="0.01" data-max="0.3" data-step="0.01" data-float="true">
-                    <span class="scrubber-arrow"><</span>
-                    <span class="scrubber-value" data-val="0.12">0.12</span>
-                    <span class="scrubber-arrow">></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <div class="group-title">// BLASTER WEAPON MODS //</div>
+            <div class="group-title">// PHYSICS MODS //</div>
             <div class="setting-row">
                 <div class="setting-label">BLAST RADIUS</div>
                 <div class="scrubber-control" data-target="blastRadius" data-min="100" data-max="800" data-step="10">
@@ -209,7 +159,7 @@
                     <span class="scrubber-arrow">></span>
                 </div>
             </div>
-            <div class="setting-row">
+             <div class="setting-row">
                 <div class="setting-label">BLAST FORCE</div>
                 <div class="scrubber-control" data-target="blastStrength" data-min="50" data-max="500" data-step="10">
                     <span class="scrubber-arrow"><</span>
@@ -221,19 +171,19 @@
 
     </div>
 
-
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
         import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
 
-        // --- 全域配置 (可從設定面板修改) ---
         const CONFIG = {
             particleCount: 8000,
             particleSize: 3.0,
             returnSpeed: 0.12,
-            renderScale: 1.0, // 解析度比例
-            blastRadius: 400, // 衝擊波半徑
-            blastStrength: 150, // 衝擊波力度
+            renderScale: 1.0,
+            blastRadius: 400,
+            blastStrength: 150,
+            bgOpacity: 0.6,    // 新增：背景透明度
+            cyberFilter: 1,    // 新增：濾鏡開關 (1=開, 0=關)
             colors: {
                 cyan: new THREE.Color(0x00FFFF),
                 gold: new THREE.Color(0xFFD700),
@@ -246,7 +196,7 @@
         let positions, targetPositions, colors, velocities;
         let handLandmarker, video;
         let isVideoPlaying = false;
-        let needRebuildParticles = false; // 標記是否需要重建粒子系統
+        let needRebuildParticles = false;
 
         const state = {
             hand1: { active: false, x: 0, y: 0, fingers: 0 },
@@ -257,13 +207,11 @@
 
         const textCanvas = document.createElement('canvas');
         const textCtx = textCanvas.getContext('2d');
-        // 設定內部畫布解析度，這會影響文字的精細度和粒子數量需求
         textCanvas.width = 1024;
         textCanvas.height = 576;
 
-        // --- 初始化與主循環 ---
         async function init() {
-            initSettingsPanel(); // 初始化設定面板邏輯
+            initSettingsPanel();
             setupThreeJS();
             createParticles();
             await setupMediaPipe();
@@ -278,26 +226,16 @@
             animate();
         }
 
-        // --- 設定面板邏輯 (Scrubber Control) ---
         function initSettingsPanel() {
             const panel = document.getElementById('settings-panel');
             const toggleBtn = document.getElementById('settings-toggle');
             const closeBtn = document.getElementById('settings-close');
 
-            toggleBtn.onclick = () => {
-                panel.classList.add('active');
-                document.body.classList.add('settings-open');
-            };
-            closeBtn.onclick = () => {
-                panel.classList.remove('active');
-                document.body.classList.remove('settings-open');
-            };
+            toggleBtn.onclick = () => { panel.classList.add('active'); document.body.classList.add('settings-open'); };
+            closeBtn.onclick = () => { panel.classList.remove('active'); document.body.classList.remove('settings-open'); };
 
-            // 初始化所有 Scrubber 滑塊
             document.querySelectorAll('.scrubber-control').forEach(scrubber => {
-                let startX = 0;
-                let startVal = 0;
-                let isDragging = false;
+                let startX = 0; let startVal = 0; let isDragging = false;
                 const targetKey = scrubber.dataset.target;
                 const min = parseFloat(scrubber.dataset.min);
                 const max = parseFloat(scrubber.dataset.max);
@@ -305,76 +243,65 @@
                 const isFloat = scrubber.dataset.float === "true";
                 const valueDisplay = scrubber.querySelector('.scrubber-value');
 
-                // 設定初始值
                 let currentVal = CONFIG[targetKey];
-                valueDisplay.innerText = isFloat ? currentVal.toFixed(2) : currentVal;
+                valueDisplay.innerText = isFloat ? currentVal.toFixed(1) : currentVal;
                 valueDisplay.dataset.val = valueDisplay.innerText;
 
                 const onMove = (e) => {
                     if (!isDragging) return;
                     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const deltaX = clientX - startX;
-                    
-                    // 計算新數值 (靈敏度調整: / 5)
                     let newVal = startVal + deltaX * (step / 5);
                     newVal = Math.max(min, Math.min(max, newVal));
-                    
                     if (!isFloat) newVal = Math.round(newVal / step) * step;
 
-                    // 更新顯示
-                    const displayVal = isFloat ? newVal.toFixed(2) : Math.round(newVal);
+                    const displayVal = isFloat ? newVal.toFixed(1) : Math.round(newVal);
                     valueDisplay.innerText = displayVal;
                     valueDisplay.dataset.val = displayVal;
-
-                    // 應用設定
                     applySettingChange(targetKey, newVal);
                 };
 
                 const onUp = () => {
-                    isDragging = false;
-                    scrubber.classList.remove('dragging');
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                    document.removeEventListener('touchmove', onMove);
-                    document.removeEventListener('touchend', onUp);
+                    isDragging = false; scrubber.classList.remove('dragging');
+                    document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp);
                 };
 
                 const onDown = (e) => {
-                    isDragging = true;
-                    scrubber.classList.add('dragging');
+                    isDragging = true; scrubber.classList.add('dragging');
                     startX = e.touches ? e.touches[0].clientX : e.clientX;
                     startVal = parseFloat(valueDisplay.innerText);
-                    
-                    document.addEventListener('mousemove', onMove);
-                    document.addEventListener('mouseup', onUp);
-                    document.addEventListener('touchmove', onMove, { passive: false });
-                    document.addEventListener('touchend', onUp);
-                    e.preventDefault(); // 防止手機滾動
+                    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+                    document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp);
+                    e.preventDefault();
                 };
-
-                scrubber.addEventListener('mousedown', onDown);
-                scrubber.addEventListener('touchstart', onDown);
+                scrubber.addEventListener('mousedown', onDown); scrubber.addEventListener('touchstart', onDown);
             });
         }
 
-        // 應用設定變更
         function applySettingChange(key, value) {
             CONFIG[key] = value;
-            
             switch(key) {
-                case 'particleCount':
-                    needRebuildParticles = true; // 標記需要重建
+                case 'bgOpacity':
+                    const vid = document.getElementById('video-input');
+                    if(vid) vid.style.opacity = value;
                     break;
-                case 'particleSize':
-                    if(material) material.size = value;
+                case 'cyberFilter':
+                    const vid2 = document.getElementById('video-input');
+                    if(vid2) {
+                        if(value > 0.5) {
+                            vid2.classList.add('filter-cyber');
+                            vid2.classList.remove('filter-none');
+                        } else {
+                            vid2.classList.add('filter-none');
+                            vid2.classList.remove('filter-cyber');
+                        }
+                    }
                     break;
-                case 'renderScale':
-                    onWindowResize(); // 觸發重新設定解析度
-                    break;
-                // 其他參數在各自的 update 函數中會自動讀取新的 CONFIG 值
+                case 'particleCount': needRebuildParticles = true; break;
+                case 'renderScale': onWindowResize(); break;
             }
         }
-
 
         function setupThreeJS() {
             scene = new THREE.Scene();
@@ -386,14 +313,10 @@
                 1, 2000
             );
             camera.position.z = 1000;
-            
-            // 允許 alpha 以顯示背景 video
             renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            // 初始像素比
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * CONFIG.renderScale);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
-            
             window.addEventListener('resize', onWindowResize, false);
         }
 
@@ -405,19 +328,15 @@
             camera.top = frustumSize / 2;
             camera.bottom = -frustumSize / 2;
             camera.updateProjectionMatrix();
-            
             renderer.setSize(window.innerWidth, window.innerHeight);
-            // 應用 Render Scale 設定
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * CONFIG.renderScale);
         }
 
-        // 重建粒子系統 (當數量改變時呼叫)
         function rebuildParticleSystem() {
             scene.remove(particles);
-            geometry.dispose();
-            material.dispose();
+            geometry.dispose(); material.dispose();
             createParticles();
-            generateTextTargets(state.text); // 重新生成當前文字的目標點
+            generateTextTargets(state.text);
             needRebuildParticles = false;
         }
 
@@ -432,7 +351,6 @@
                 positions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
                 positions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
                 positions[i * 3 + 2] = 0;
-                
                 colors[i * 3] = CONFIG.colors.cyan.r;
                 colors[i * 3 + 1] = CONFIG.colors.cyan.g;
                 colors[i * 3 + 2] = CONFIG.colors.cyan.b;
@@ -455,24 +373,16 @@
         }
 
         async function setupMediaPipe() {
-            const vision = await FilesetResolver.forVisionTasks(
-                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-            );
+            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-                    delegate: "GPU"
-                },
-                runningMode: "VIDEO",
-                numHands: 2
+                baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
+                runningMode: "VIDEO", numHands: 2
             });
         }
 
         async function startCamera() {
             video = document.getElementById('video-input');
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, audio: false 
-            });
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
             video.srcObject = stream;
             video.onloadedmetadata = () => {
                 video.play();
@@ -484,16 +394,11 @@
 
         function detectGestures() {
             if (!handLandmarker || !video || !isVideoPlaying || video.videoWidth === 0) return;
-
             const results = handLandmarker.detectForVideo(video, performance.now());
-            state.hand1.active = false;
-            state.hand2.active = false;
-
+            state.hand1.active = false; state.hand2.active = false;
             if (results.landmarks.length > 0) {
                 processHand(results.landmarks[0], state.hand1);
-                if (results.landmarks.length > 1) {
-                    processHand(results.landmarks[1], state.hand2);
-                }
+                if (results.landmarks.length > 1) processHand(results.landmarks[1], state.hand2);
             }
         }
 
@@ -515,10 +420,10 @@
             if (cmdHand && cmdHand.active) {
                 let txt = null; let col = null;
                 switch(cmdHand.fingers) {
-                    case 1: txt = "Cyber"; col = CONFIG.colors.cyan; break;
-                    case 2: txt = "Punk"; col = CONFIG.colors.pink; break;
-                    case 3: txt = "2077"; col = CONFIG.colors.gold; break;
-                    case 4: txt = "System"; col = CONFIG.colors.red; break;
+                    case 1: txt = "truth"; col = CONFIG.colors.cyan; break;
+                    case 2: txt = "Rrok"; col = CONFIG.colors.pink; break;
+                    case 3: txt = "MARS"; col = CONFIG.colors.gold; break;
+                    case 4: txt = "I’m watching you. Be careful."; col = CONFIG.colors.red; break;
                 }
                 if (txt && txt !== state.text) {
                     state.text = txt;
@@ -541,19 +446,17 @@
 
         function applyBlasterForce(hx, hy) {
             const positionsArr = geometry.attributes.position.array;
-            const radiusSq = CONFIG.blastRadius * CONFIG.blastRadius; // 使用設定值
-            
+            const radiusSq = CONFIG.blastRadius * CONFIG.blastRadius;
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 const idx = i * 3;
                 const dx = positionsArr[idx] - hx;
                 const dy = positionsArr[idx + 1] - hy;
                 const distSq = dx*dx + dy*dy;
-                
                 if (distSq < radiusSq) {
                     const dist = Math.sqrt(distSq);
                     const force = (CONFIG.blastRadius - dist) / CONFIG.blastRadius;
                     const angle = Math.atan2(dy, dx) + (Math.random()-0.5)*0.5; 
-                    const blast = CONFIG.blastStrength * force; // 使用設定值
+                    const blast = CONFIG.blastStrength * force;
                     velocities[idx] += Math.cos(angle) * blast * 0.2;
                     velocities[idx+1] += Math.sin(angle) * blast * 0.2;
                 }
@@ -561,22 +464,15 @@
         }
 
         function updatePhysics() {
-            // 如果需要重建粒子系統，先執行重建，本幀跳過物理更新
-            if (needRebuildParticles) {
-                rebuildParticleSystem();
-                return;
-            }
-
+            if (needRebuildParticles) { rebuildParticleSystem(); return; }
             const positionsArr = geometry.attributes.position.array;
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 const idx = i * 3;
-                const ax = (targetPositions[idx] - positionsArr[idx]) * CONFIG.returnSpeed; // 使用設定值
+                const ax = (targetPositions[idx] - positionsArr[idx]) * CONFIG.returnSpeed;
                 const ay = (targetPositions[idx+1] - positionsArr[idx+1]) * CONFIG.returnSpeed;
                 const az = (targetPositions[idx+2] - positionsArr[idx+2]) * CONFIG.returnSpeed;
-
                 velocities[idx] += ax; velocities[idx+1] += ay; velocities[idx+2] += az;
                 velocities[idx] *= 0.85; velocities[idx+1] *= 0.85; velocities[idx+2] *= 0.85;
-
                 positionsArr[idx] += velocities[idx];
                 positionsArr[idx+1] += velocities[idx+1];
                 positionsArr[idx+2] += velocities[idx+2];
@@ -591,28 +487,19 @@
             textCtx.textAlign = 'center';
             textCtx.textBaseline = 'middle';
             textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
-
             const data = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height).data;
             const validPixels = [];
-            // 自動調整採樣步長，確保粒子數足夠時文字清晰，粒子少時不會崩壞
             const step = Math.max(4, Math.floor(Math.sqrt((textCanvas.width * textCanvas.height) / (CONFIG.particleCount * 2))));
-
             for (let y = 0; y < textCanvas.height; y += step) {
                 for (let x = 0; x < textCanvas.width; x += step) {
                     if (data[(y * textCanvas.width + x) * 4] > 128) {
-                        validPixels.push({ 
-                            x: (x - textCanvas.width / 2) * 2, 
-                            y: -(y - textCanvas.height / 2) * 2 
-                        });
+                        validPixels.push({ x: (x - textCanvas.width / 2) * 2, y: -(y - textCanvas.height / 2) * 2 });
                     }
                 }
             }
-            
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 if (i < validPixels.length) {
-                    targetPositions[i * 3] = validPixels[i].x;
-                    targetPositions[i * 3 + 1] = validPixels[i].y;
-                    targetPositions[i * 3 + 2] = 0;
+                    targetPositions[i * 3] = validPixels[i].x; targetPositions[i * 3 + 1] = validPixels[i].y; targetPositions[i * 3 + 2] = 0;
                 } else {
                     targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth * 1.5;
                     targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight * 1.5;
@@ -622,9 +509,7 @@
         }
 
         function updateColors(c) {
-            for(let i=0; i<CONFIG.particleCount; i++) {
-                colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
-            }
+            for(let i=0; i<CONFIG.particleCount; i++) { colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b; }
             geometry.attributes.color.needsUpdate = true;
         }
 
