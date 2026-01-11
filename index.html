@@ -3,77 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cyberpunk System // UNLOCKED</title>
+    <title>Cyberpunk AR // REALITY-MIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@700&display=swap" rel="stylesheet">
     
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; color: #00ffff; user-select: none; -webkit-user-select: none; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; mix-blend-mode: screen; }
         
-        /* 隱藏 Video，因為我們有準心了，不需要紅框 */
+        /* --- 實境背景設定 (AR Mode) --- */
         #video-input { 
-            position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            object-fit: cover; /* 填滿螢幕 */
+            transform: scaleX(-1); /* 鏡像翻轉，像照鏡子一樣 */
+            z-index: 0;
+            opacity: 0.6; /* 稍微變暗，讓粒子更清楚 */
+            filter: contrast(1.2) saturate(0.8) hue-rotate(180deg); /* 賽博龐克濾鏡 */
         }
 
-        /* --- 視覺化準心 (關鍵 Debug 工具) --- */
-        .cursor {
-            position: absolute; width: 40px; height: 40px;
-            border-radius: 50%; border: 3px solid; transform: translate(-50%, -50%);
-            z-index: 100; pointer-events: none; display: none;
-            box-shadow: 0 0 15px currentColor; transition: opacity 0.2s;
-        }
-        #cursor-1 { border-color: #00ff88; color: #00ff88; } /* 綠色：控制手 */
-        #cursor-2 { border-color: #ff0055; color: #ff0055; } /* 紅色：互動手 */
-        .cursor-label {
-            position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
-            font-size: 10px; font-weight: bold; white-space: nowrap; color: white;
-            background: rgba(0,0,0,0.7); padding: 2px 5px; border-radius: 4px;
+        /* 掃描線疊加層 */
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0), rgba(0,0,0,0.5) 2px, rgba(0,0,0,0) 2px);
+            background-size: 100% 4px;
         }
 
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         .hud-corner { 
             position: absolute; padding: 10px; font-size: 12px; letter-spacing: 1px; 
-            text-shadow: 0 0 5px #00ffff; background: rgba(0,0,0,0.3); backdrop-filter: blur(2px);
-            border: 1px solid rgba(0, 255, 255, 0.3);
+            text-shadow: 0 0 3px #00ffff; font-weight: bold; z-index: 10;
         }
         
         .top-left { top: 10px; left: 10px; border-left: 3px solid #00ffff; }
-        .top-right { top: 10px; right: 10px; text-align: right; border-right: 3px solid #00ffff; }
-        .bottom-center { bottom: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
+        .top-right { top: 10px; right: 10px; text-align: right; border-right: 3px solid #ff0055; }
+        .bottom-center { bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center; z-index: 10; }
 
         #start-btn {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            padding: 20px 40px; border: 2px solid #00ffff; background: rgba(0,0,0,0.9);
-            color: #00ffff; font-family: 'Orbitron'; font-size: 18px; font-weight: bold;
-            z-index: 200; cursor: pointer; display: none; box-shadow: 0 0 20px #00ffff;
-            animation: pulse 1.5s infinite; pointer-events: auto;
+            padding: 15px 30px; border: 2px solid #00ffff; background: rgba(0,0,0,0.8);
+            color: #00ffff; font-family: 'Orbitron'; font-size: 20px; font-weight: bold;
+            z-index: 100; cursor: pointer; box-shadow: 0 0 20px #00ffff;
         }
-
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div id="start-btn">SYSTEM READY<br><span style="font-size:12px">TAP TO LINK NEURAL NET</span></div>
+    <div id="start-btn">INITIALIZE AR SYSTEM</div>
     
-    <div id="cursor-1" class="cursor"><div class="cursor-label">CMD HAND</div></div>
-    <div id="cursor-2" class="cursor"><div class="cursor-label">PHYSICS</div></div>
-
     <video id="video-input" playsinline webkit-playsinline muted></video>
+    <div class="scanlines"></div>
+    
     <div id="canvas-container"></div>
 
-    <div class="overlay">
-        <div class="hud-corner top-left">
-            <div>SYS: <span id="sys-status" style="color:yellow">STANDBY</span></div>
-            <div>FPS: <span id="fps">0</span></div>
-        </div>
-        <div class="hud-corner top-right">
-            <div>TARGETS: <span id="hand-count">0</span></div>
-            <div>MODE: <span id="mode-display">IDLE</span></div>
-        </div>
-        <div class="hud-corner bottom-center">
-            <div id="debug-msg">WAITING FOR INPUT...</div>
-        </div>
+    <div class="hud-corner top-left">
+        <div>SYS: <span id="sys-status">STANDBY</span></div>
+        <div>CMD: <span id="cmd-status">--</span></div>
+    </div>
+    <div class="hud-corner top-right">
+        <div>WEAPON: <span id="weapon-status" style="color:#555">LOCKED</span></div>
+        <div>PARTICLES: 8,000</div>
+    </div>
+    <div class="bottom-center">
+        <div id="debug-msg" style="color: rgba(255,255,255,0.7); font-size: 10px;">WAITING FOR INPUT</div>
     </div>
 
     <script type="module">
@@ -82,35 +73,26 @@
 
         const CONFIG = {
             particleCount: 8000,
-            particleSize: 3.5, // 粒子加大，更明顯
-            returnSpeed: 0.15,
+            particleSize: 3.0,
+            returnSpeed: 0.12, // 稍微減慢回彈，讓物理效果更明顯
             colors: {
                 cyan: new THREE.Color(0x00FFFF),
-                yellow: new THREE.Color(0xFFFF00),
-                magenta: new THREE.Color(0xFF00FF),
-                green: new THREE.Color(0x00FF88),
+                gold: new THREE.Color(0xFFD700),
+                pink: new THREE.Color(0xFF00AA),
+                red: new THREE.Color(0xFF2200)
             }
         };
 
-        function debug(msg) {
-            document.getElementById('debug-msg').innerText = msg;
-        }
-
         let scene, camera, renderer, particles, geometry;
         let positions, targetPositions, colors, velocities;
-        let handLandmarker;
-        let video;
-        let lastTime = 0;
-        let frameCount = 0;
+        let handLandmarker, video;
         let isVideoPlaying = false;
         
-        // 簡化後的狀態：只有 Hand 1 和 Hand 2，不分左右
         const state = {
-            hand1: { active: false, x: 0, y: 0, fingers: 0 },
-            hand2: { active: false, x: 0, y: 0 },
-            currentMode: 'TEXT',
-            activeText: 'Hello',
-            activeColor: CONFIG.colors.cyan
+            hand1: { active: false, x: 0, y: 0, fingers: 0 }, // 左手 (指令)
+            hand2: { active: false, x: 0, y: 0, fingers: 0 }, // 右手 (武器)
+            mode: 'TEXT',
+            text: 'READY'
         };
 
         const textCanvas = document.createElement('canvas');
@@ -119,31 +101,24 @@
         textCanvas.height = 576;
 
         async function init() {
-            try {
-                debug("LOADING GRAPHICS...");
-                setupThreeJS();
-                createParticles();
-                
-                debug("LOADING AI MODEL...");
-                await setupMediaPipe();
-                
-                const btn = document.getElementById('start-btn');
-                btn.style.display = 'block';
-                btn.onclick = async () => {
-                    btn.style.display = 'none';
-                    debug("ACTIVATING CAMERA...");
-                    await startCamera();
-                };
-
-                generateTextTargets("Hello");
-                animate();
-            } catch (error) {
-                debug(`INIT ERROR: ${error.message}`);
-            }
+            setupThreeJS();
+            createParticles();
+            await setupMediaPipe();
+            
+            const btn = document.getElementById('start-btn');
+            btn.onclick = async () => {
+                btn.style.display = 'none';
+                await startCamera();
+            };
+            
+            generateTextTargets("READY");
+            animate();
         }
 
         function setupThreeJS() {
             scene = new THREE.Scene();
+            // 不設背景色，讓它透明以顯示 Video
+            
             const aspect = window.innerWidth / window.innerHeight;
             const frustumSize = 1000;
             camera = new THREE.OrthographicCamera(
@@ -163,12 +138,13 @@
             positions = new Float32Array(CONFIG.particleCount * 3);
             targetPositions = new Float32Array(CONFIG.particleCount * 3);
             colors = new Float32Array(CONFIG.particleCount * 3);
-            velocities = new Float32Array(CONFIG.particleCount * 3);
+            velocities = new Float32Array(CONFIG.particleCount * 3); // 速度向量
 
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 positions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
                 positions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
                 positions[i * 3 + 2] = 0;
+                
                 colors[i * 3] = CONFIG.colors.cyan.r;
                 colors[i * 3 + 1] = CONFIG.colors.cyan.g;
                 colors[i * 3 + 2] = CONFIG.colors.cyan.b;
@@ -184,7 +160,7 @@
                 blending: THREE.AdditiveBlending,
                 depthTest: false,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9
             });
             particles = new THREE.Points(geometry, material);
             scene.add(particles);
@@ -200,218 +176,170 @@
                     delegate: "GPU"
                 },
                 runningMode: "VIDEO",
-                numHands: 2,
-                minHandDetectionConfidence: 0.3,
-                minHandPresenceConfidence: 0.3,
-                minTrackingConfidence: 0.3
+                numHands: 2
             });
         }
 
         async function startCamera() {
             video = document.getElementById('video-input');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" },
-                    audio: false
-                });
-                video.srcObject = stream;
-                video.setAttribute('autoplay', '');
-                video.setAttribute('muted', '');
-                video.setAttribute('playsinline', '');
-                
-                video.onloadedmetadata = () => {
-                    video.play().then(() => {
-                        isVideoPlaying = true;
-                        document.getElementById('sys-status').innerText = "ONLINE";
-                        document.getElementById('sys-status').style.color = "#00ff88";
-                        debug("CAMERA ACTIVE. SHOW HANDS.");
-                    });
-                };
-            } catch (e) {
-                debug("CAM FAIL: " + e.message);
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" }, audio: false 
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                video.play();
+                isVideoPlaying = true;
+                document.getElementById('sys-status').innerText = "ONLINE";
+                document.getElementById('sys-status').style.color = "#00ff88";
+            };
         }
 
-        function updateCursor(id, active, x, y) {
-            const cursor = document.getElementById(id);
-            if (active) {
-                cursor.style.display = 'block';
-                // 將 Three.js 座標 (0在中心) 轉換回 CSS 像素座標 (0在左上)
-                const screenX = (x / -window.innerWidth + 0.5) * window.innerWidth; // 反轉 X (鏡像)
-                const screenY = (y / -window.innerHeight + 0.5) * window.innerHeight; // 反轉 Y
-                
-                // 這裡我們直接用 HTML 覆蓋層，所以需要反向計算回去
-                // 簡單點：直接用 MediaPipe 原始座標來畫 Cursor，不要經過 Three.js 轉換再轉回來
-            } else {
-                cursor.style.display = 'none';
-            }
-        }
-
-        // --- 核心邏輯：將手部數據映射到狀態 ---
         function detectGestures() {
-            if (!handLandmarker || !video || !isVideoPlaying) return;
-            if (video.videoWidth === 0) return;
+            if (!handLandmarker || !video || !isVideoPlaying || video.videoWidth === 0) return;
 
             const results = handLandmarker.detectForVideo(video, performance.now());
-            
-            // 重置狀態
             state.hand1.active = false;
             state.hand2.active = false;
 
-            document.getElementById('hand-count').innerText = results.landmarks.length;
-
             if (results.landmarks.length > 0) {
-                // --- 處理第 1 隻手 (控制手) ---
-                const lm1 = results.landmarks[0];
-                state.hand1.active = true;
+                // 這裡我們簡單將第一隻偵測到的手視為「左手(指令)」，第二隻視為「右手(武器)」
+                // 為了體驗順暢，不用太嚴格區分左右，只要有手就行
                 
-                // 計算手指數量
-                const tips = [8, 12, 16, 20];
-                const pips = [6, 10, 14, 18];
-                let fingers = 0;
-                // 拇指簡化判斷
-                if (Math.abs(lm1[4].x - lm1[3].x) > 0.02) fingers++; 
-                for (let i = 0; i < 4; i++) {
-                    if (lm1[tips[i]].y < lm1[pips[i]].y) fingers++;
-                }
-                state.hand1.fingers = fingers;
+                // --- 手 1 ---
+                processHand(results.landmarks[0], state.hand1);
                 
-                // 更新 Cursor 1 (綠色) 位置 (直接使用 CSS %)
-                const c1 = document.getElementById('cursor-1');
-                c1.style.display = 'block';
-                c1.style.left = `${(1 - lm1[8].x) * 100}%`; // 鏡像 X
-                c1.style.top = `${lm1[8].y * 100}%`;
-                
-                // 更新 Three.js 用座標 (食指指尖)
-                state.hand1.x = (lm1[8].x - 0.5) * -window.innerWidth;
-                state.hand1.y = -(lm1[8].y - 0.5) * window.innerHeight;
-
-                // --- 處理第 2 隻手 (如果有) ---
+                // --- 手 2 ---
                 if (results.landmarks.length > 1) {
-                    const lm2 = results.landmarks[1];
-                    state.hand2.active = true;
-                    
-                    const c2 = document.getElementById('cursor-2');
-                    c2.style.display = 'block';
-                    c2.style.left = `${(1 - lm2[8].x) * 100}%`;
-                    c2.style.top = `${lm2[8].y * 100}%`;
-
-                    state.hand2.x = (lm2[8].x - 0.5) * -window.innerWidth;
-                    state.hand2.y = -(lm2[8].y - 0.5) * window.innerHeight;
-                } else {
-                    document.getElementById('cursor-2').style.display = 'none';
+                    processHand(results.landmarks[1], state.hand2);
                 }
-            } else {
-                document.getElementById('cursor-1').style.display = 'none';
-                document.getElementById('cursor-2').style.display = 'none';
             }
         }
 
+        function processHand(landmarks, handState) {
+            handState.active = true;
+            // 座標轉換 (鏡像)
+            handState.x = (landmarks[9].x - 0.5) * -window.innerWidth; // 掌心 X
+            handState.y = -(landmarks[9].y - 0.5) * window.innerHeight; // 掌心 Y
+            
+            // 計算手指
+            let fingers = 0;
+            if (landmarks[8].y < landmarks[6].y) fingers++; // 食指
+            if (landmarks[12].y < landmarks[10].y) fingers++; // 中指
+            if (landmarks[16].y < landmarks[14].y) fingers++; // 無名指
+            if (landmarks[20].y < landmarks[18].y) fingers++; // 小指
+            if (Math.abs(landmarks[4].x - landmarks[3].x) > 0.02) fingers++; // 拇指
+            handState.fingers = fingers;
+        }
+
         function updateLogic() {
-            // Hand 1: 切換文字
-            if (state.hand1.active) {
-                let newText = null;
-                let newColor = null;
-                
-                // 顯示指令狀態
-                debug(`HAND 1: ${state.hand1.fingers} FINGERS`);
+            // --- 玩法 A：左手控制文字 ---
+            // 只要有一隻手在比數字 (小於 5)，就切換文字
+            const cmdHand = state.hand1.fingers < 5 ? state.hand1 : (state.hand2.fingers < 5 ? state.hand2 : null);
+            
+            if (cmdHand && cmdHand.active) {
+                let txt = null; let col = null;
+                switch(cmdHand.fingers) {
+                    case 1: txt = "Cyber"; col = CONFIG.colors.cyan; break;
+                    case 2: txt = "Punk"; col = CONFIG.colors.pink; break;
+                    case 3: txt = "2077"; col = CONFIG.colors.gold; break;
+                    case 4: txt = "System"; col = CONFIG.colors.red; break;
+                }
+                if (txt && txt !== state.text) {
+                    state.text = txt;
+                    generateTextTargets(txt);
+                    updateColors(col);
+                    document.getElementById('cmd-status').innerText = txt.toUpperCase();
+                }
+            }
 
-                switch(state.hand1.fingers) {
-                    case 0: break; // 握拳保持
-                    case 1: newText = "Hello"; newColor = CONFIG.colors.cyan; break;
-                    case 2: newText = "Gemini3"; newColor = CONFIG.colors.yellow; break;
-                    case 3: newText = "Good!"; newColor = CONFIG.colors.magenta; break;
-                    case 4: newText = "Bye"; newColor = CONFIG.colors.green; break;
-                    case 5: // 盛接模式
-                        if(state.currentMode !== 'CATCH') {
-                            state.currentMode = 'CATCH';
-                            generateSphereTargets(state.hand1.x, state.hand1.y);
-                            document.getElementById('mode-display').innerText = "CATCH";
-                        }
-                        break;
-                }
-
-                if (state.hand1.fingers < 5 && newText && newText !== state.activeText) {
-                    state.activeText = newText;
-                    state.currentMode = 'TEXT';
-                    generateTextTargets(newText);
-                    updateParticleColor(newColor);
-                    document.getElementById('mode-display').innerText = "TEXT";
-                }
+            // --- 玩法 B：右手 (或任意張開的手) 觸發衝擊波 ---
+            // 檢查是否有手張開 (5指)
+            const weaponHand = state.hand1.fingers === 5 ? state.hand1 : (state.hand2.fingers === 5 ? state.hand2 : null);
+            
+            if (weaponHand && weaponHand.active) {
+                document.getElementById('weapon-status').innerText = "FIRING";
+                document.getElementById('weapon-status').style.color = "#ff0055";
                 
-                // CATCH 模式跟隨手移動
-                if(state.currentMode === 'CATCH') {
-                     // 簡單的更新球體位置邏輯
-                     const cx = state.hand1.x;
-                     const cy = state.hand1.y;
-                     // 重新計算目標點太重，我們只在渲染層做偏移
-                }
+                // 鋼鐵人模式：從掌心持續向外推
+                applyBlasterForce(weaponHand.x, weaponHand.y);
             } else {
-                debug("NO HANDS DETECTED");
+                document.getElementById('weapon-status').innerText = "LOCKED";
+                document.getElementById('weapon-status').style.color = "#555";
+            }
+        }
+
+        function applyBlasterForce(hx, hy) {
+            const positionsArr = geometry.attributes.position.array;
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                const idx = i * 3;
+                const px = positionsArr[idx];
+                const py = positionsArr[idx + 1];
+                
+                const dx = px - hx;
+                const dy = py - hy;
+                const distSq = dx*dx + dy*dy;
+                
+                // 範圍較大的衝擊波
+                if (distSq < 400 * 400) {
+                    const dist = Math.sqrt(distSq);
+                    const force = (400 - dist) / 400; // 越近越強
+                    
+                    // 隨機擾動，讓氣流看起來更自然
+                    const angle = Math.atan2(dy, dx) + (Math.random()-0.5)*0.5; 
+                    
+                    const blastStrength = 150 * force; // 強度
+                    
+                    // 直接修改粒子當前位置 (瞬間推開)
+                    // 並給予速度 (慣性)
+                    velocities[idx] += Math.cos(angle) * blastStrength * 0.2;
+                    velocities[idx+1] += Math.sin(angle) * blastStrength * 0.2;
+                }
             }
         }
 
         function updatePhysics() {
             const positionsArr = geometry.attributes.position.array;
-            
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 const idx = i * 3;
-                let px = positionsArr[idx];
-                let py = positionsArr[idx + 1];
-                let pz = positionsArr[idx + 2];
-                let tx = targetPositions[idx];
-                let ty = targetPositions[idx + 1];
                 
-                // CATCH 模式偏移
-                if (state.currentMode === 'CATCH' && state.hand1.active) {
-                    tx += state.hand1.x;
-                    ty += state.hand1.y;
-                }
+                // 1. 歸位力 (吸引回目標文字)
+                const tx = targetPositions[idx];
+                const ty = targetPositions[idx + 1];
+                const tz = targetPositions[idx + 2];
+                
+                // 計算加速度
+                const ax = (tx - positionsArr[idx]) * CONFIG.returnSpeed;
+                const ay = (ty - positionsArr[idx+1]) * CONFIG.returnSpeed;
+                const az = (tz - positionsArr[idx+2]) * CONFIG.returnSpeed;
 
-                let vx = (tx - px) * CONFIG.returnSpeed;
-                let vy = (ty - py) * CONFIG.returnSpeed;
-                let vz = (targetPositions[idx+2] - pz) * CONFIG.returnSpeed;
+                // 2. 更新速度 (加入阻尼，避免永遠彈跳)
+                velocities[idx] += ax;
+                velocities[idx+1] += ay;
+                velocities[idx+2] += az;
+                
+                velocities[idx] *= 0.85; // 阻尼
+                velocities[idx+1] *= 0.85;
+                velocities[idx+2] *= 0.85;
 
-                // --- 物理互動 (斥力) ---
-                // 對 Hand 1 和 Hand 2 都產生反應
-                [state.hand1, state.hand2].forEach(hand => {
-                    if (hand.active) {
-                        const dx = px - hand.x;
-                        const dy = py - hand.y;
-                        const distSq = dx*dx + dy*dy;
-                        const radius = 150; // 斥力半徑
-                        
-                        if (distSq < radius * radius) {
-                            const angle = Math.atan2(dy, dx);
-                            const force = (radius - Math.sqrt(distSq)) / radius;
-                            const pushStr = 80 * force; // 強力推開
-                            vx += Math.cos(angle) * pushStr;
-                            vy += Math.sin(angle) * pushStr;
-                        }
-                    }
-                });
-
-                positionsArr[idx] += vx;
-                positionsArr[idx + 1] += vy;
-                positionsArr[idx + 2] += vz;
+                // 3. 更新位置
+                positionsArr[idx] += velocities[idx];
+                positionsArr[idx+1] += velocities[idx+1];
+                positionsArr[idx+2] += velocities[idx+2];
             }
             geometry.attributes.position.needsUpdate = true;
         }
 
-        // --- 輔助函式 ---
         function generateTextTargets(text) {
-            textCtx.fillStyle = 'black';
-            textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
-            textCtx.font = '900 150px "Noto Sans TC", sans-serif';
+            textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+            textCtx.font = '900 180px "Noto Sans TC", sans-serif';
             textCtx.fillStyle = 'white';
             textCtx.textAlign = 'center';
             textCtx.textBaseline = 'middle';
             textCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
 
-            const imageData = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
-            const data = imageData.data;
+            const data = textCtx.getImageData(0, 0, textCanvas.width, textCanvas.height).data;
             const validPixels = [];
-            const step = 5; 
+            const step = 6;
             for (let y = 0; y < textCanvas.height; y += step) {
                 for (let x = 0; x < textCanvas.width; x += step) {
                     if (data[(y * textCanvas.width + x) * 4] > 128) {
@@ -423,35 +351,20 @@
                 }
             }
             
-            // Map pixels to particles
             for (let i = 0; i < CONFIG.particleCount; i++) {
                 if (i < validPixels.length) {
                     targetPositions[i * 3] = validPixels[i].x;
                     targetPositions[i * 3 + 1] = validPixels[i].y;
                     targetPositions[i * 3 + 2] = 0;
                 } else {
-                    // 多餘粒子散布背景
-                    targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth;
-                    targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight;
-                    targetPositions[i * 3 + 2] = -500;
+                    targetPositions[i * 3] = (Math.random() - 0.5) * window.innerWidth * 1.5;
+                    targetPositions[i * 3 + 1] = (Math.random() - 0.5) * window.innerHeight * 1.5;
+                    targetPositions[i * 3 + 2] = (Math.random() - 0.5) * 500;
                 }
             }
         }
 
-        function generateSphereTargets(cx, cy) {
-            // 球體生成邏輯簡化：只設定相對位置，實際位置在 Physics loop 更新
-            const count = CONFIG.particleCount;
-            const radius = 120;
-            for (let i = 0; i < count; i++) {
-                const phi = Math.acos(1 - 2 * (i + 0.5) / count);
-                const theta = Math.PI * 40 * (i + 0.5) / count;
-                targetPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-                targetPositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                targetPositions[i * 3 + 2] = radius * Math.cos(phi);
-            }
-        }
-
-        function updateParticleColor(c) {
+        function updateColors(c) {
             for(let i=0; i<CONFIG.particleCount; i++) {
                 colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
             }
@@ -460,18 +373,9 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            const now = performance.now();
-            if (now - lastTime > 1000) {
-                document.getElementById('fps').innerText = frameCount;
-                frameCount = 0;
-                lastTime = now;
-            }
-            frameCount++;
-            
             detectGestures();
             updateLogic();
             updatePhysics();
-            
             renderer.render(scene, camera);
         }
 
