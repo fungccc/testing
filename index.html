@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v5.4 Tone Generator</title>
+    <title>Web Tuner T1 - v5.5 Wide & Loud</title>
     <style>
         :root {
             --bg-color: #000000;
@@ -23,7 +23,7 @@
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation; /* Improves touch response */
+            touch-action: manipulation;
         }
         
         header {
@@ -66,17 +66,30 @@
         }
 
         /* Keyboard Area */
-        .keyboard-area { background: #000; padding: 10px 5px; z-index: 20; }
+        .keyboard-area { background: #000; padding: 10px 0; z-index: 20; border-top: 1px solid #222; }
         
-        /* Octave Controls */
-        .octave-ctrl { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; }
-        .pill { 
-            background: #222; color: #888; padding: 6px 16px; border-radius: 20px; 
-            font-size: 0.8rem; cursor: pointer; transition: all 0.2s; border: 1px solid #333;
+        /* New Scrollable Octave Control */
+        .octave-scroller {
+            display: flex;
+            overflow-x: auto;
+            white-space: nowrap;
+            gap: 10px;
+            padding: 5px 15px 15px 15px; /* Bottom padding for scrollbar space */
+            margin-bottom: 5px;
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+            scrollbar-width: none; /* Hide scrollbar Firefox */
         }
-        .pill.active { background: #444; color: #fff; border-color: #666; font-weight: bold; }
+        .octave-scroller::-webkit-scrollbar { display: none; } /* Hide scrollbar Chrome/Safari */
+
+        .pill { 
+            background: #222; color: #888; padding: 8px 18px; border-radius: 20px; 
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s; border: 1px solid #333;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .pill.active { background: #444; color: #fff; border-color: var(--accent-blue); font-weight: bold; box-shadow: 0 0 10px rgba(41, 121, 255, 0.3); }
 
         /* Keys */
+        .keys-wrapper { padding: 0 5px; }
         .keys-row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
         .key {
             width: 40px; height: 55px; background: #222; border-radius: 0 0 4px 4px;
@@ -89,9 +102,7 @@
             background: #333; height: 35px; margin-bottom: 20px; 
             border-radius: 0 0 4px 4px; z-index: 2; align-items: center; padding-bottom: 0;
         }
-        /* Active State (Mic Detection) */
         .key.active { background: var(--accent-green) !important; color: #000 !important; transform: translateY(2px); box-shadow: 0 0 15px var(--accent-green); }
-        /* Playback State (User Pressing) */
         .key.pressed { background: var(--accent-blue) !important; color: #fff !important; transform: translateY(4px); box-shadow: 0 0 10px var(--accent-blue); }
 
         footer { text-align: center; font-size: 0.7rem; color: #444; padding: 8px; background: #000; }
@@ -102,6 +113,12 @@
         .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
         .mode-card { background: #222; border: 2px solid #333; padding: 15px; cursor: pointer; border-radius: 8px; }
         .mode-card.selected { border-color: var(--accent-green); background: rgba(102, 204, 102, 0.1); }
+
+        /* Volume Slider in Modal */
+        .setting-group { margin-top: 25px; border-top: 1px solid #333; padding-top: 15px; }
+        .slider-container { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
+        input[type=range] { flex: 1; height: 6px; background: #333; border-radius: 3px; outline: none; -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: var(--accent-blue); border-radius: 50%; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -129,10 +146,14 @@
     </div>
 
     <div class="keyboard-area">
-        <div class="octave-ctrl">
-            <div class="pill" id="octMinus">-1 Octave</div>
-            <div class="pill active" id="octDefault">Default</div>
-            <div class="pill" id="octPlus">+1 Octave</div>
+        <div class="octave-scroller" id="octaveScroller">
+            <div class="pill" data-oct="1">-3 (C1)</div>
+            <div class="pill" data-oct="2">-2 (C2)</div>
+            <div class="pill" data-oct="3">-1 (C3)</div>
+            <div class="pill active" data-oct="4">Default (C4)</div>
+            <div class="pill" data-oct="5">+1 (C5)</div>
+            <div class="pill" data-oct="6">+2 (C6)</div>
+            <div class="pill" data-oct="7">+3 (C7)</div>
         </div>
 
         <div class="keys-wrapper">
@@ -148,12 +169,13 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v5.4 Tone Generator</footer>
+    <footer>豐狂出品 • v5.5 Wide & Loud</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeSettings">&times;</span>
             <h2 style="color:white; margin-top:0;">設定</h2>
+            
             <div class="mode-options">
                 <div class="mode-card selected" onclick="setMode('turbo')" id="modeTurbo">
                     <strong style="color:#fff">🎹 極速模式</strong><br><small style="color:#888">一般使用 (靈敏)</small>
@@ -162,19 +184,30 @@
                     <strong style="color:#fff">🐢 低音模式</strong><br><small style="color:#888">貝斯/低頻專用</small>
                 </div>
             </div>
+
+            <div class="setting-group">
+                <h3 style="color:#ccc; margin-bottom:5px;">🔊 發聲部音量 (Tone Volume)</h3>
+                <div class="slider-container">
+                    <span style="font-size:1.2rem;">🔈</span>
+                    <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5">
+                    <span style="font-size:1.2rem;">🔊</span>
+                </div>
+                <div style="text-align:right; color:#888; font-size:0.8rem; margin-top:5px;" id="volValueDisplay">150%</div>
+            </div>
         </div>
     </div>
 
     <script>
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
         let analyser, micSource, gainNode, dataArray;
-        let toneOsc = null, toneGain = null; // Tone Generator Nodes
+        let toneOsc = null, toneGain = null;
         let isRunning = false;
         let currentFFTSize = 2048; 
         let downsampleStep = 2;
         
         // Tone Gen State
-        let keyboardOctave = 4; // Default C4-B4
+        let keyboardOctave = 4; // Default C4
+        let masterVolume = 1.5; // Default 150% volume
         
         const A4 = 440;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -189,16 +222,14 @@
             exportBtn: document.getElementById('exportBtn'),
             importBtn: document.getElementById('importBtn'),
             startBtn: document.getElementById('startBtn'),
-            pills: {
-                minus: document.getElementById('octMinus'),
-                def: document.getElementById('octDefault'),
-                plus: document.getElementById('octPlus')
-            }
+            octavePills: document.querySelectorAll('.pill[data-oct]'), // New
+            volSlider: document.getElementById('volSlider'), // New
+            volDisplay: document.getElementById('volValueDisplay') // New
         };
         const canvas = document.getElementById('tunerCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
 
-        // Smoothing & History
+        // History vars
         const historySize = 300; 
         const pitchHistory = new Array(historySize).fill(null);
         let lastNoteName = "";
@@ -225,7 +256,7 @@
 
                 micSource = audioCtx.createMediaStreamSource(stream);
                 micSource.connect(gainNode);
-                gainNode.connect(analyser); // Mic -> Analyser
+                gainNode.connect(analyser); 
                 
                 setMode('turbo');
                 isRunning = true;
@@ -233,29 +264,40 @@
             } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
 
-        // === KEYBOARD INTERACTIVITY (v5.4) ===
-        
-        // 1. Octave Control
-        function setKeyboardOctave(oct, el) {
-            keyboardOctave = oct;
-            // UI Update
-            [ui.pills.minus, ui.pills.def, ui.pills.plus].forEach(p => p.classList.remove('active'));
-            el.classList.add('active');
-        }
-        ui.pills.minus.onclick = function() { setKeyboardOctave(3, this); };
-        ui.pills.def.onclick = function() { setKeyboardOctave(4, this); };
-        ui.pills.plus.onclick = function() { setKeyboardOctave(5, this); };
+        // === v5.5 NEW FEATURES ===
 
-        // 2. Play Tone Function
+        // 1. Scrollable Octave Control Logic
+        ui.octavePills.forEach(pill => {
+            pill.addEventListener('click', function() {
+                // UI update
+                ui.octavePills.forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                // Logic update
+                keyboardOctave = parseInt(this.getAttribute('data-oct'));
+                
+                // Scroll into view gently if needed
+                this.scrollIntoView({behavior: "smooth", block: "nearest", inline: "center"});
+            });
+        });
+
+        // 2. Volume Slider Logic
+        ui.volSlider.addEventListener('input', function() {
+            masterVolume = parseFloat(this.value);
+            ui.volDisplay.textContent = Math.round(masterVolume * 100) + "%";
+            // If tone is playing, update immediately
+            if (toneGain) {
+                toneGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.1);
+            }
+        });
+
+        // 3. Tone Generator (Updated with Volume)
         function startTone(noteName) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
-            // Calc Freq
             const semitones = notes.indexOf(noteName);
             const noteNum = (keyboardOctave + 1) * 12 + semitones;
             const freq = 440 * Math.pow(2, (noteNum - 69) / 12);
 
-            // Stop prev tone if any
             if (toneOsc) stopTone();
 
             toneOsc = audioCtx.createOscillator();
@@ -265,13 +307,11 @@
             toneOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             
             toneGain.gain.setValueAtTime(0, audioCtx.currentTime);
-            toneGain.gain.linearRampToValueAtTime(0.5, audioCtx.currentTime + 0.05);
+            // Use masterVolume here
+            toneGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.05);
 
-            // ROUTING:
-            // 1. To Speakers (User hears it)
             toneGain.connect(audioCtx.destination);
-            // 2. To Tuner (Analyser sees it) -> SELF CHECK!
-            if (analyser) toneGain.connect(analyser);
+            if (analyser) toneGain.connect(analyser); // Self-check loop
 
             toneOsc.connect(toneGain);
             toneOsc.start();
@@ -285,53 +325,26 @@
                 toneGain.gain.linearRampToValueAtTime(0, stopTime);
                 toneOsc.stop(stopTime);
                 
-                // Cleanup disconnects slightly later
-                const oldOsc = toneOsc;
-                const oldGain = toneGain;
-                setTimeout(() => {
-                    oldOsc.disconnect();
-                    oldGain.disconnect();
-                }, 200);
-                
-                toneOsc = null;
-                toneGain = null;
+                const oldOsc = toneOsc; const oldGain = toneGain;
+                setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200);
+                toneOsc = null; toneGain = null;
             }
         }
 
-        // 3. Attach Events to Keys
+        // Attach Key Events
         ui.keys.forEach(key => {
             const note = key.getAttribute('data-note');
-            
-            // Mouse Events
-            key.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                key.classList.add('pressed');
-                startTone(note);
-            });
-            key.addEventListener('mouseup', () => {
-                key.classList.remove('pressed');
-                stopTone();
-            });
-            key.addEventListener('mouseleave', () => {
-                key.classList.remove('pressed');
-                stopTone();
-            });
+            const press = (e) => { e.preventDefault(); key.classList.add('pressed'); startTone(note); };
+            const release = (e) => { e.preventDefault(); key.classList.remove('pressed'); stopTone(); };
 
-            // Touch Events (for Mobile)
-            key.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevents scroll/zoom
-                key.classList.add('pressed');
-                startTone(note);
-            });
-            key.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                key.classList.remove('pressed');
-                stopTone();
-            });
+            key.addEventListener('mousedown', press);
+            key.addEventListener('mouseup', release);
+            key.addEventListener('mouseleave', release);
+            key.addEventListener('touchstart', press);
+            key.addEventListener('touchend', release);
         });
 
-
-        // === DSP & TUNER LOGIC ===
+        // === DSP (Same as v5.4) ===
         window.setMode = (mode) => {
             if (mode === 'turbo') {
                 currentFFTSize = 2048; downsampleStep = 2;
@@ -356,7 +369,6 @@
             const threshold = 0.15;
             const halfSize = Math.floor(buffer.length / 2);
             const yinBuffer = new Float32Array(halfSize);
-
             for (let t = 0; t < halfSize; t++) {
                 let sum = 0;
                 for (let i = 0; i < halfSize; i += downsampleStep) {
@@ -381,8 +393,7 @@
             }
             if (tau === -1) return -1;
             const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
-            const betterTau = tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0));
-            return sampleRate / betterTau;
+            return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
         }
 
         function update() {
@@ -411,7 +422,6 @@
                     
                     const freqFromNote = A4 * Math.pow(2, (roundedNote - 69) / 12);
                     const rawCents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
-                    
                     smoothedCents = (smoothedCents * 0.3) + (rawCents * 0.7);
                     cents = smoothedCents;
 
@@ -427,33 +437,22 @@
                         ui.note.textContent = detectedNote;
                         ui.oct.textContent = detectedOctave;
                         lastNoteName = detectedNote + detectedOctave;
-                        
-                        // HIGHLIGHT LOGIC:
-                        // We must be careful not to override the "pressed" state style
-                        // The CSS separates .active (mic) and .pressed (user)
                         ui.keys.forEach(k => k.classList.remove('active'));
                         const k = document.querySelector(`.key[data-note="${detectedNote}"]`);
                         if(k) k.classList.add('active');
                     }
                 }
             }
-
             if (!hasValidSignal) {
                 framesSinceLastSignal++;
                 if (framesSinceLastSignal < SIGNAL_HOLD_FRAMES) {
-                    cents = lastValidCents; 
-                    isSignalActive = true; 
+                    cents = lastValidCents; isSignalActive = true; 
                 } else {
-                    isSignalActive = false;
-                    cents = null;
+                    isSignalActive = false; cents = null;
                 }
             }
-
             if (isRecording) processRecording(detectedNote, detectedOctave);
-
-            pitchHistory.pop();
-            pitchHistory.unshift(cents);
-            
+            pitchHistory.pop(); pitchHistory.unshift(cents);
             drawVisualizer();
             requestAnimationFrame(update);
         }
@@ -462,9 +461,7 @@
             const w = canvas.parentElement.clientWidth;
             const h = canvas.parentElement.clientHeight;
             canvas.width = w; canvas.height = h;
-            
             const isLocked = isSignalActive && currentCents !== null && Math.abs(currentCents) <= 5;
-
             if (isLocked) {
                 ctx.fillStyle = "#66cc66"; ctx.fillRect(0, 0, w, h);
                 ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
@@ -477,30 +474,16 @@
                 ctx.strokeStyle = "rgba(255,255,255,0.3)";
                 ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
             }
-
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 4;
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
+            ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
             ctx.beginPath();
-            
-            const rowH = h / historySize;
-            let lastX = null;
-            
+            const rowH = h / historySize; let lastX = null;
             for (let i = 0; i < historySize; i++) {
                 if (pitchHistory[i] !== null) {
                     const val = Math.max(-50, Math.min(50, pitchHistory[i]));
-                    const x = (val + 50) / 100 * w;
-                    const y = i * rowH;
-                    if (lastX === null) ctx.moveTo(x, y);
-                    else {
-                        if (Math.abs(x - lastX) < w * 0.8) ctx.lineTo(x, y);
-                        else ctx.moveTo(x, y);
-                    }
+                    const x = (val + 50) / 100 * w; const y = i * rowH;
+                    if (lastX === null) ctx.moveTo(x, y); else if (Math.abs(x - lastX) < w * 0.8) ctx.lineTo(x, y); else ctx.moveTo(x, y);
                     lastX = x;
-                } else {
-                    lastX = null;
-                }
+                } else lastX = null;
             }
             ctx.stroke();
         }
@@ -548,7 +531,7 @@
                     const f = 440 * Math.pow(2, ((parseInt(o)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
                     const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
                     osc.frequency.value = f; g.gain.setValueAtTime(0, ct); 
-                    g.gain.linearRampToValueAtTime(0.3, ct+0.02); g.gain.linearRampToValueAtTime(0, ct+ds);
+                    g.gain.linearRampToValueAtTime(masterVolume * 0.3, ct+0.02); g.gain.linearRampToValueAtTime(0, ct+ds);
                     osc.connect(g); g.connect(audioCtx.destination); osc.start(ct); osc.stop(ct+ds);
                     setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.add('pressed'); }, (ct-audioCtx.currentTime)*1000);
                     setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.remove('pressed'); }, (ct-audioCtx.currentTime)*1000 + ds*1000);
