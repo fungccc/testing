@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v5.2 Fix</title>
+    <title>Web Tuner T1 - v5.3 Smooth Flow</title>
     <style>
         :root {
             --bg-color: #000000;
             --text-main: #ffffff;
-            --accent-green: #66cc66; /* Tuner Green */
-            --accent-red: #ff5252;   /* Tuner Red */
+            --accent-green: #66cc66;
+            --accent-red: #ff5252;
             --accent-blue: #2979ff;
-            --panel-bg: #111;
         }
         body {
             background-color: var(--bg-color);
@@ -27,79 +26,44 @@
         }
         
         header {
-            display: flex;
-            justify-content: space-between;
-            padding: 15px;
-            align-items: center;
-            background: #000;
-            z-index: 20;
+            display: flex; justify-content: space-between; padding: 15px; align-items: center;
+            background: #000; z-index: 20;
         }
         .settings-btn { cursor: pointer; font-size: 1.5rem; }
-        
         .action-area { display: flex; gap: 8px; }
         .btn {
-            border: 1px solid #555;
-            background: transparent;
-            color: #ccc;
-            padding: 6px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-weight: 600;
+            border: 1px solid #555; background: transparent; color: #ccc;
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+            display: flex; align-items: center; gap: 5px; font-weight: 600;
         }
         .rec-btn.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); }
         .play-btn { color: var(--accent-blue); border-color: var(--accent-blue); }
         .play-btn.playing { background: var(--accent-blue); color: white; }
         .hidden-input { display: none; }
 
-        /* Readout */
         .readout {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            text-align: center;
-            padding: 10px 0;
-            background: #000;
-            z-index: 20;
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+            text-align: center; padding: 10px 0; background: #000; z-index: 20;
         }
         .hz-val { font-size: 1.4rem; color: #888; font-family: monospace; }
         .hz-label { font-size: 0.6rem; color: #555; display: block; letter-spacing: 1px; }
-        
         .note-container { display: flex; align-items: baseline; justify-content: center; width: 140px;}
         .note-display { font-size: 6rem; font-weight: 700; line-height: 1; color: #fff; }
         .note-octave { font-size: 2.5rem; color: #aaa; margin-left: 5px;}
         .cents-val { font-size: 1.4rem; color: #888; font-family: monospace; }
 
-        /* Visualizer Area */
         .viz-container {
-            flex: 1;
-            position: relative;
-            background: #000;
-            overflow: hidden;
-            /* Remove borders to let color bleed */
+            flex: 1; position: relative; background: #000; overflow: hidden;
         }
         canvas { width: 100%; height: 100%; display: block; }
         
         .start-btn {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 15px 40px;
-            background: var(--accent-green);
-            border: none;
-            color: #000;
-            font-weight: bold;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            z-index: 30;
-            box-shadow: 0 0 20px rgba(102, 204, 102, 0.4);
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 15px 40px; background: var(--accent-green); border: none;
+            color: #000; font-weight: bold; border-radius: 40px; cursor: pointer;
+            font-size: 1.2rem; z-index: 30; box-shadow: 0 0 20px rgba(102, 204, 102, 0.4);
         }
 
-        /* Keyboard */
         .keyboard { padding: 10px 5px; background: #000; z-index: 20; }
         .keys-row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
         .key {
@@ -116,14 +80,12 @@
 
         footer { text-align: center; font-size: 0.7rem; color: #444; padding: 8px; background: #000; }
 
-        /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; }
         .modal-content { max-width: 500px; margin: 60px auto; padding: 25px; background: #1a1a1a; border-radius: 12px; border: 1px solid #333; }
         .close-btn { float: right; font-size: 1.5rem; cursor: pointer; color: #888; }
         .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
         .mode-card { background: #222; border: 2px solid #333; padding: 15px; cursor: pointer; border-radius: 8px; }
         .mode-card.selected { border-color: var(--accent-green); background: rgba(102, 204, 102, 0.1); }
-        
     </style>
 </head>
 <body>
@@ -162,7 +124,7 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v5.2 Audio Fix</footer>
+    <footer>豐狂出品 • v5.3 Smooth Flow</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -170,29 +132,24 @@
             <h2 style="color:white; margin-top:0;">設定</h2>
             <div class="mode-options">
                 <div class="mode-card selected" onclick="setMode('turbo')" id="modeTurbo">
-                    <strong style="color:#fff">🎹 極速模式</strong><br><small style="color:#888">適合鋼琴/吉他 (靈敏)</small>
+                    <strong style="color:#fff">🎹 極速模式</strong><br><small style="color:#888">一般使用 (靈敏)</small>
                 </div>
                 <div class="mode-card" onclick="setMode('bass')" id="modeBass">
-                    <strong style="color:#fff">🐢 低音模式</strong><br><small style="color:#888">適合貝斯 (精準)</small>
+                    <strong style="color:#fff">🐢 低音模式</strong><br><small style="color:#888">貝斯/低頻專用</small>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // === AUDIO CORE ===
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        let analyser, source, gainNode;
-        let dataArray;
+        let analyser, source, gainNode, dataArray;
         let isRunning = false;
-        
         let currentFFTSize = 2048; 
-        let downsampleStep = 2; // Reverted to 2 for better stability than 4
-        
+        let downsampleStep = 2;
         const A4 = 440;
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
-        // DOM Cache
         const ui = {
             hz: document.getElementById('hz'),
             note: document.getElementById('note'),
@@ -207,57 +164,50 @@
         const canvas = document.getElementById('tunerCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
 
-        // Visualizer State
+        // === SMOOTHING VARIABLES (v5.3 New Feature) ===
         const historySize = 300; 
         const pitchHistory = new Array(historySize).fill(null);
         let lastNoteName = "";
-        let currentCents = 0; // Global for draw loop to access
+        let currentCents = 0; 
         let isSignalActive = false;
+        
+        // Smoothing Logic
+        let lastValidCents = 0;
+        let framesSinceLastSignal = 0;
+        const SIGNAL_HOLD_FRAMES = 12; // Hold signal for ~0.2s after loss to bridge gaps
+        let smoothedCents = 0; // For smoothing the line movement
 
-        // === INITIALIZATION & FIXES ===
+        // === SETUP ===
         ui.startBtn.onclick = async function() {
             this.style.display = 'none';
             if (audioCtx.state === 'suspended') await audioCtx.resume();
-            
             try {
-                // FIXED: Use standard constraints first to ensure compatibility
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { 
-                        echoCancellation: false, 
-                        noiseSuppression: false, 
-                        autoGainControl: false // This makes input quiet, so we add GainNode
-                    } 
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
                 });
-
                 analyser = audioCtx.createAnalyser();
-                analyser.smoothingTimeConstant = 0.1; // Fast response
+                analyser.smoothingTimeConstant = 0.8; // Increased slightly for smoother FFT
                 
-                // NEW: Pre-amp Gain Node to boost quiet signals
                 gainNode = audioCtx.createGain();
-                gainNode.gain.value = 5.0; // 500% Volume boost
+                gainNode.gain.value = 5.0; 
 
                 source = audioCtx.createMediaStreamSource(stream);
-                source.connect(gainNode); // Mic -> Gain
-                gainNode.connect(analyser); // Gain -> Analyser
+                source.connect(gainNode);
+                gainNode.connect(analyser);
                 
                 setMode('turbo');
                 isRunning = true;
                 update();
-            } catch (e) { 
-                alert("Error: " + e.message); 
-                this.style.display = 'block';
-            }
+            } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
 
         window.setMode = (mode) => {
             if (mode === 'turbo') {
-                currentFFTSize = 2048;
-                downsampleStep = 2; // Safer speed
+                currentFFTSize = 2048; downsampleStep = 2;
                 document.getElementById('modeTurbo').className = 'mode-card selected';
                 document.getElementById('modeBass').className = 'mode-card';
             } else {
-                currentFFTSize = 4096;
-                downsampleStep = 2; 
+                currentFFTSize = 4096; downsampleStep = 2;
                 document.getElementById('modeTurbo').className = 'mode-card';
                 document.getElementById('modeBass').className = 'mode-card selected';
             }
@@ -267,38 +217,30 @@
             }
         };
 
-        // Modal
         const modal = document.getElementById('settingsModal');
         document.getElementById('openSettings').onclick = () => modal.style.display = 'block';
         document.getElementById('closeSettings').onclick = () => modal.style.display = 'none';
 
-        // === DSP ALGORITHM ===
+        // === DSP ===
         function detectPitch(buffer, sampleRate) {
             const threshold = 0.15;
             const halfSize = Math.floor(buffer.length / 2);
-            // Optimization: Reuse a static buffer if possible, but here we alloc for safety
             const yinBuffer = new Float32Array(halfSize);
 
-            // Step 1: Difference
             for (let t = 0; t < halfSize; t++) {
                 let sum = 0;
-                // Downsample optimization
                 for (let i = 0; i < halfSize; i += downsampleStep) {
                     const d = buffer[i] - buffer[i + t];
                     sum += d * d;
                 }
                 yinBuffer[t] = sum;
             }
-
-            // Step 2: CMND
             yinBuffer[0] = 1;
             let runningSum = 0;
             for (let t = 1; t < halfSize; t++) {
                 runningSum += yinBuffer[t];
                 yinBuffer[t] *= t / runningSum;
             }
-
-            // Step 3: Threshold
             let tau = -1;
             for (let t = 2; t < halfSize; t++) {
                 if (yinBuffer[t] < threshold) {
@@ -307,10 +249,7 @@
                     break;
                 }
             }
-            
             if (tau === -1) return -1;
-
-            // Step 4: Interpolation
             const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
             const betterTau = tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0));
             return sampleRate / betterTau;
@@ -321,7 +260,6 @@
             if (!isRunning) return;
             analyser.getFloatTimeDomainData(dataArray);
             
-            // Calculate RMS
             let sum = 0;
             for (let i = 0; i < dataArray.length; i+=4) sum += dataArray[i] * dataArray[i];
             const rms = Math.sqrt(sum / (dataArray.length/4));
@@ -329,26 +267,36 @@
             let cents = null;
             let detectedNote = null;
             let detectedOctave = null;
-            
-            // FIX: Lower threshold from 0.015 to 0.003
+            let hasValidSignal = false;
+
             if (rms > 0.003) {
                 const pitch = detectPitch(dataArray, audioCtx.sampleRate);
                 const minFreq = currentFFTSize === 4096 ? 25 : 50;
 
                 if (pitch !== -1 && pitch > minFreq && pitch < 4200) {
-                    isSignalActive = true;
+                    hasValidSignal = true;
                     const noteNum = 12 * (Math.log(pitch / A4) / Math.log(2));
                     const roundedNote = Math.round(noteNum) + 69;
                     detectedNote = notes[roundedNote % 12];
                     detectedOctave = Math.floor(roundedNote / 12) - 1;
                     
                     const freqFromNote = A4 * Math.pow(2, (roundedNote - 69) / 12);
-                    cents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
-                    currentCents = cents; // Global update
+                    const rawCents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
+                    
+                    // Smoothing Filter: 
+                    // cents = 70% new value + 30% old value to reduce jitter
+                    smoothedCents = (smoothedCents * 0.3) + (rawCents * 0.7);
+                    cents = smoothedCents;
 
-                    // Fast UI Update
+                    // Update State
+                    lastValidCents = cents;
+                    framesSinceLastSignal = 0; 
+                    currentCents = cents; 
+                    isSignalActive = true;
+
+                    // UI
                     ui.hz.textContent = pitch.toFixed(1);
-                    ui.cents.textContent = (cents > 0 ? "+" : "") + cents;
+                    ui.cents.textContent = (cents > 0 ? "+" : "") + cents.toFixed(0);
                     
                     if (lastNoteName !== detectedNote + detectedOctave) {
                         ui.note.textContent = detectedNote;
@@ -358,105 +306,104 @@
                         const k = document.querySelector(`.key[data-note="${detectedNote}"]`);
                         if(k) k.classList.add('active');
                     }
-                } else {
-                    // Pitch lost but signal present (noise)
                 }
-            } else {
-                isSignalActive = false;
+            }
+
+            // === V5.3 KEY FIX: SIGNAL HOLD ===
+            // If signal is lost, use the last known value for X frames to connect the line
+            if (!hasValidSignal) {
+                framesSinceLastSignal++;
+                if (framesSinceLastSignal < SIGNAL_HOLD_FRAMES) {
+                    // Pretend we still have signal to keep line connected
+                    cents = lastValidCents; 
+                    isSignalActive = true; 
+                    // Don't update Hz text to avoid confusion, but update Graph
+                } else {
+                    // Truly lost signal
+                    isSignalActive = false;
+                    cents = null;
+                }
             }
 
             if (isRecording) processRecording(detectedNote, detectedOctave);
 
-            // Update History
             pitchHistory.pop();
-            pitchHistory.unshift(isSignalActive ? cents : null);
+            pitchHistory.unshift(cents);
             
             drawVisualizer();
             requestAnimationFrame(update);
         }
 
-        // === NEW VISUALIZER LOGIC ===
         function drawVisualizer() {
             const w = canvas.parentElement.clientWidth;
             const h = canvas.parentElement.clientHeight;
             canvas.width = w; canvas.height = h;
             
-            // State: Signal is active AND cents is small enough (Locked)
+            // Background Logic
             const isLocked = isSignalActive && currentCents !== null && Math.abs(currentCents) <= 5;
 
             if (isLocked) {
-                // Mode A: LOCKED (Full Green)
-                ctx.fillStyle = "#66cc66"; // Full Green
-                ctx.fillRect(0, 0, w, h);
-                
-                // Draw white center line faintly
-                ctx.strokeStyle = "rgba(255,255,255,0.8)";
-                ctx.lineWidth = 2;
+                ctx.fillStyle = "#66cc66"; ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
             } else {
-                // Mode B: TUNING (Red - Green - Red)
-                const centerW = w * 0.15; // Width of the green "safe zone"
-                
-                // Left Zone (Flat) -> Red
-                ctx.fillStyle = "#ff5252"; 
-                ctx.fillRect(0, 0, w/2 - centerW/2, h);
-                
-                // Center Zone (Target) -> Green
-                ctx.fillStyle = "#66cc66"; 
-                ctx.fillRect(w/2 - centerW/2, 0, centerW, h);
-                
-                // Right Zone (Sharp) -> Red (Fixed from Black)
-                ctx.fillStyle = "#ff5252"; 
-                ctx.fillRect(w/2 + centerW/2, 0, w, h);
-                
-                // Center Line
+                const centerW = w * 0.15;
+                ctx.fillStyle = "#ff5252"; ctx.fillRect(0, 0, w/2 - centerW/2, h);
+                ctx.fillStyle = "#66cc66"; ctx.fillRect(w/2 - centerW/2, 0, centerW, h);
+                ctx.fillStyle = "#ff5252"; ctx.fillRect(w/2 + centerW/2, 0, w, h);
                 ctx.strokeStyle = "rgba(255,255,255,0.3)";
                 ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
             }
 
-            // Draw Waveform
+            // Waveform Drawing
             ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 4; // Thicker line
+            ctx.lineWidth = 4;
             ctx.lineCap = "round";
-            ctx.lineJoin = "round";
+            ctx.lineJoin = "round"; // Smoother joints
             ctx.beginPath();
             
             const rowH = h / historySize;
+            let lastX = null, lastY = null;
             
-            for (let i = 0; i < historySize; i+=1) {
+            for (let i = 0; i < historySize; i++) {
                 if (pitchHistory[i] !== null) {
                     const val = Math.max(-50, Math.min(50, pitchHistory[i]));
-                    // Map -50..50 to 0..w
                     const x = (val + 50) / 100 * w;
                     const y = i * rowH;
                     
-                    if (i === 0 || pitchHistory[i-1] === null) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
+                    // Optimization: Connect lines even if logic was disjointed
+                    if (lastX === null) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        // Don't draw if jump is huge (octave error), otherwise draw connected
+                        if (Math.abs(x - lastX) < w * 0.8) {
+                           ctx.lineTo(x, y);
+                        } else {
+                           ctx.moveTo(x, y); // Jump cut
+                        }
+                    }
+                    lastX = x;
+                    lastY = y;
+                } else {
+                    lastX = null; // Break line on explicit null
                 }
             }
             ctx.stroke();
         }
 
-        // ... (Recorder & Player Logic remains same, referencing updated variables) ...
-        // Re-adding essential recorder logic for completeness
-        let isRecording = false;
-        let recordedNotes = []; 
-        let currentNoteEvent = null; 
-        let noteStartTime = 0;
-        
+        // Recording & Playback (Standard Logic)
+        let isRecording = false; let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
         ui.recBtn.onclick = () => {
             isRecording = !isRecording;
             if (isRecording) {
                 recordedNotes = []; currentNoteEvent = null;
-                ui.recBtn.textContent = "■ STOP"; ui.recBtn.classList.add('recording');
-                ui.exportBtn.style.display = 'none';
+                ui.recBtn.textContent = "■ STOP"; ui.recBtn.classList.add('recording'); ui.exportBtn.style.display = 'none';
             } else {
-                if (currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime});
+                if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime});
                 ui.recBtn.textContent = "● REC"; ui.recBtn.classList.remove('recording');
-                if (recordedNotes.length) ui.exportBtn.style.display = 'block';
+                if(recordedNotes.length) ui.exportBtn.style.display = 'block';
             }
         };
-
         ui.exportBtn.onclick = () => {
             let x = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
             recordedNotes.forEach(n=>{
@@ -464,79 +411,45 @@
                 x+=`<note><pitch><step>${s}</step>${a?'<alter>1</alter>':''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`;
             });
             x+=`</measure></part></score-partwise>`;
-            // iOS Blob Fix
             const blob = new Blob([x], { type: 'text/xml' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `rec_${Date.now()}.musicxml`;
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `rec_${Date.now()}.musicxml`; a.click();
         };
 
-        // File Import & Playback logic
         const fileInput = document.getElementById('fileInput');
         ui.importBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => playMusicXML(e.target.result);
-            reader.readAsText(file);
-            fileInput.value = '';
+            const f = e.target.files[0]; if(!f)return;
+            const r = new FileReader(); r.onload = (e) => playMusicXML(e.target.result); r.readAsText(f); fileInput.value = '';
         };
 
-        function playMusicXML(xmlString) {
+        function playMusicXML(xml) {
              if (audioCtx.state === 'suspended') audioCtx.resume();
-             const parser = new DOMParser();
-             const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-             const noteNodes = xmlDoc.querySelectorAll("note");
-             ui.importBtn.classList.add('playing');
-             ui.importBtn.textContent = "PLAYING...";
-             let currentTime = audioCtx.currentTime + 0.1;
-
-             noteNodes.forEach((node) => {
-                const step = node.querySelector("step")?.textContent;
-                const octave = node.querySelector("octave")?.textContent;
-                const alter = node.querySelector("alter")?.textContent;
-                const dur = node.querySelector("duration")?.textContent;
-                if (dur && step) {
-                    const dSec = parseFloat(dur) / 1000;
-                    let n = step + (alter==="1"?"#":"");
-                    const freq = 440 * Math.pow(2, ((parseInt(octave) + 1) * 12 + notes.indexOf(n) - 69) / 12);
-                    
-                    const osc = audioCtx.createOscillator();
-                    const g = audioCtx.createGain();
-                    osc.frequency.value = freq;
-                    g.gain.setValueAtTime(0, currentTime);
-                    g.gain.linearRampToValueAtTime(0.3, currentTime + 0.02);
-                    g.gain.linearRampToValueAtTime(0, currentTime + dSec);
-                    osc.connect(g); g.connect(audioCtx.destination);
-                    osc.start(currentTime); osc.stop(currentTime + dSec);
-                    
-                    const delay = (currentTime - audioCtx.currentTime) * 1000;
-                    setTimeout(() => {
-                        const k = document.querySelector(`.key[data-note="${n}"]`);
-                        if(k) k.classList.add('playback-active');
-                    }, delay);
-                    setTimeout(() => {
-                        const k = document.querySelector(`.key[data-note="${n}"]`);
-                        if(k) k.classList.remove('playback-active');
-                    }, delay + (dSec*1000));
-                    
-                    currentTime += dSec;
+             const parser = new DOMParser(); const doc = parser.parseFromString(xml, "text/xml");
+             const notes = doc.querySelectorAll("note");
+             ui.importBtn.classList.add('playing'); ui.importBtn.textContent = "PLAYING...";
+             let ct = audioCtx.currentTime + 0.1;
+             notes.forEach(n => {
+                const s = n.querySelector("step")?.textContent; const o = n.querySelector("octave")?.textContent;
+                const a = n.querySelector("alter")?.textContent; const d = n.querySelector("duration")?.textContent;
+                if(d && s) {
+                    const ds = parseFloat(d)/1000; let nn = s+(a==="1"?"#":"");
+                    const f = 440 * Math.pow(2, ((parseInt(o)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
+                    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                    osc.frequency.value = f; g.gain.setValueAtTime(0, ct); 
+                    g.gain.linearRampToValueAtTime(0.3, ct+0.02); g.gain.linearRampToValueAtTime(0, ct+ds);
+                    osc.connect(g); g.connect(audioCtx.destination); osc.start(ct); osc.stop(ct+ds);
+                    setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.add('playback-active'); }, (ct-audioCtx.currentTime)*1000);
+                    setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.remove('playback-active'); }, (ct-audioCtx.currentTime)*1000 + ds*1000);
+                    ct += ds;
                 }
              });
-             setTimeout(() => {
-                 ui.importBtn.classList.remove('playing');
-                 ui.importBtn.textContent = "▶ PLAY";
-             }, (currentTime - audioCtx.currentTime)*1000);
+             setTimeout(() => { ui.importBtn.classList.remove('playing'); ui.importBtn.textContent = "▶ PLAY"; }, (ct-audioCtx.currentTime)*1000);
         }
-
-        function processRecording(note, octave) {
+        function processRecording(n, o) {
             const now = Date.now();
-            if (currentNoteEvent && note === currentNoteEvent.note && octave === currentNoteEvent.octave) return;
-            if (currentNoteEvent) recordedNotes.push({ ...currentNoteEvent, duration: now - noteStartTime });
-            if (note) { currentNoteEvent = { note, octave }; noteStartTime = now; } 
-            else { currentNoteEvent = null; }
+            if(currentNoteEvent && n===currentNoteEvent.note && o===currentNoteEvent.octave) return;
+            if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: now-noteStartTime});
+            if(n) { currentNoteEvent = {note:n, octave:o}; noteStartTime = now; } else currentNoteEvent = null;
         }
     </script>
 </body>
