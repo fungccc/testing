@@ -2,660 +2,555 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CYBER DEFENSE // AR GAME</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Tuner T1 - Player Suite (v4.0)</title>
     <style>
         :root {
-            --cyan: #00ffff;
-            --pink: #ff0055;
-            --orange: #ffaa00;
-            --red: #ff3333;
-            --bg-dark: rgba(0, 5, 10, 0.8);
+            --bg-color: #121212;
+            --text-main: #ffffff;
+            --accent-green: #4caf50;
+            --accent-red: #ff4444;
+            --accent-blue: #448aff; /* New for Playback */
+            --panel-bg: #1e1e1e;
+            --modal-bg: rgba(0, 0, 0, 0.95);
         }
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; font-family: 'Orbitron', sans-serif; user-select: none; -webkit-user-select: none; }
-        
-        /* AR Background */
-        #video-input { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            object-fit: cover; transform: scaleX(-1); z-index: 0;
-            filter: contrast(1.1) brightness(0.8) hue-rotate(180deg); opacity: 0.8;
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
         
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; }
-        
-        /* --- HUD UI --- */
-        .hud-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        
-        .top-bar { 
-            position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; 
+        /* Top Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            align-items: center;
         }
-        .level-info { text-align: left; border-left: 4px solid var(--cyan); padding-left: 10px; background: var(--bg-dark); }
-        .timer-info { text-align: right; border-right: 4px solid var(--pink); padding-right: 10px; background: var(--bg-dark); }
+        .settings-btn { cursor: pointer; font-size: 1.5rem; }
         
-        .big-text { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--cyan); }
-        .sub-text { font-size: 12px; color: var(--cyan); letter-spacing: 2px; }
-        .warning-text { color: var(--red); animation: blink 0.5s infinite; }
+        /* Action Buttons Area */
+        .action-area { display: flex; gap: 8px; }
 
-        /* 彈藥顯示 */
-        #ammo-container {
-            position: absolute; bottom: 20px; left: 20px; 
-            background: var(--bg-dark); border: 2px solid var(--orange);
-            padding: 10px; border-radius: 10px 0 10px 0;
-            transform: skewX(-10deg);
+        .btn {
+            border: 1px solid #555;
+            background: transparent;
+            color: #ccc;
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            text-decoration: none;
         }
-        .ammo-count { font-size: 32px; color: var(--orange); font-family: 'Share Tech Mono'; }
-        .ammo-label { font-size: 10px; color: #aaa; }
-        #reload-msg { display: none; color: var(--red); font-size: 14px; animation: blink 0.2s infinite; font-weight: bold;}
+        
+        /* Record Button */
+        .rec-btn { border-color: var(--accent-red); color: var(--accent-red); }
+        .rec-btn.recording { background: var(--accent-red); color: white; animation: pulse 1.5s infinite; }
+        
+        /* Play/Import Button */
+        .play-btn { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .play-btn:hover { background: rgba(68, 138, 255, 0.2); }
+        .play-btn.playing { background: var(--accent-blue); color: white; }
 
-        /* 準心 */
-        .crosshair {
-            position: absolute; width: 40px; height: 40px; border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: 50%; transform: translate(-50%, -50%); display: none;
-            transition: width 0.1s, height 0.1s;
-        }
-        #ch-left { border-color: var(--orange); } /* 機槍 */
-        #ch-right { border-color: var(--cyan); } /* 衝擊波 */
+        .hidden-input { display: none; }
 
-        /* 暫停遮罩 */
-        #pause-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            display: none; justify-content: center; align-items: center; z-index: 100;
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* Main Display */
+        .readout {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            text-align: center;
+            padding: 10px 0;
         }
-        .pause-text { font-size: 40px; color: var(--cyan); border: 2px solid var(--cyan); padding: 20px 40px; }
-
-        /* 遊戲開始按鈕 */
-        #start-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 200; display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
+        .hz-val { font-size: 1.2rem; color: #ccc; }
+        .hz-label { font-size: 0.7rem; color: #888; display: block; }
+        .note-display { font-size: 5rem; font-weight: 300; line-height: 1; }
+        .note-octave { font-size: 2rem; }
+        .cents-val { font-size: 1.2rem; color: #ccc; }
+        
+        /* Visualizer */
+        .viz-container {
+            flex: 1;
+            position: relative;
+            background: #222;
+            margin: 0 10px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
         }
+        canvas { width: 100%; height: 100%; display: block; }
         .start-btn {
-            margin-top: 30px; padding: 20px 50px; font-size: 24px; color: var(--cyan);
-            background: transparent; border: 2px solid var(--cyan); cursor: pointer;
-            font-family: 'Orbitron'; font-weight: bold; box-shadow: 0 0 20px var(--cyan);
-            pointer-events: auto;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            background: var(--accent-green);
+            border: none;
+            color: white;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            z-index: 10;
         }
 
-        /* 遊戲結束/過關 */
-        #game-msg {
-            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 30px; text-align: center; color: #fff; text-shadow: 0 0 20px var(--pink);
-            display: none; pointer-events: none; width: 100%;
+        /* Keyboard Footer */
+        .keyboard { padding: 10px; background: black; }
+        .keys-row { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+        .key {
+            width: 35px; height: 45px; background: #333; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff; font-size: 0.9rem; transition: background 0.1s;
         }
+        .key.sharp { background: #444; height: 35px; margin-bottom: 10px;}
+        .key.active { background: var(--accent-green); color: #000; box-shadow: 0 0 15px var(--accent-green); transform: scale(1.1); }
+        /* Playback Active Color (Blue) */
+        .key.playback-active { background: var(--accent-blue) !important; color: white !important; box-shadow: 0 0 15px var(--accent-blue); transform: scale(1.1); }
 
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
+        footer { text-align: center; font-size: 0.7rem; color: #555; padding: 5px; margin-top: auto; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-bg); z-index: 100; backdrop-filter: blur(5px); }
+        .modal-content { max-width: 600px; margin: 40px auto; padding: 20px; color: white; }
+        .close-btn { float: right; font-size: 2rem; cursor: pointer; }
+        .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+        .mode-card { background: #222; border: 2px solid #333; padding: 15px; cursor: pointer; border-radius: 10px; }
+        .mode-card.selected { border-color: var(--accent-green); background: #1a331a; }
+        .info-table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8rem; }
+        .info-table th, .info-table td { border: 1px solid #444; padding: 8px; }
     </style>
 </head>
 <body>
 
-    <div id="start-screen">
-        <h1 style="color:var(--cyan); text-shadow: 0 0 20px var(--cyan);">CYBER DEFENSE</h1>
-        <div style="color:#aaa; text-align:center; line-height: 1.6; font-size: 14px;">
-            L-HAND (1 Finger): SHOOT (12 Rounds)<br>
-            L-HAND (Fist): RELOAD<br>
-            L-HAND (Open): BLACK HOLE<br>
-            R-HAND (Open): SHOCKWAVE<br>
-            L-HAND (2/3): PAUSE / RESUME
+    <header>
+        <div class="settings-btn" id="openSettings">⚙️</div>
+        <div>Tuner T1</div>
+        <div class="action-area">
+            <button class="btn rec-btn" id="recordBtn">● 錄製</button>
+            <button class="btn rec-btn" id="exportBtn" style="display:none; border-color:#fff; color:#fff;">⬇ XML</button>
+            
+            <input type="file" id="fileInput" class="hidden-input" accept=".musicxml,.xml">
+            <button class="btn play-btn" id="importBtn">📂 播放 XML</button>
         </div>
-        <button class="start-btn" id="init-btn">INITIATE LINK</button>
+    </header>
+
+    <div class="readout">
+        <div><span id="hz" class="hz-val">0.0</span> <span class="hz-label">HERTZ</span></div>
+        <div class="note-display"><span id="note">-</span><span id="octave" class="note-octave"></span></div>
+        <div><span id="cents" class="cents-val">0.0</span> <span class="hz-label">CENTS</span></div>
     </div>
 
-    <div id="pause-overlay">
-        <div class="pause-text">SYSTEM PAUSED</div>
+    <div class="viz-container">
+        <button class="start-btn" id="startBtn">啟動引擎 (Start)</button>
+        <canvas id="tunerCanvas"></canvas>
     </div>
 
-    <video id="video-input" playsinline webkit-playsinline muted></video>
+    <div class="keyboard">
+        <div class="keys-row" style="margin-bottom: -15px; z-index: 2; position: relative;">
+            <div class="key sharp" data-note="C#">C#</div><div class="key sharp" data-note="D#">D#</div>
+            <div style="width: 35px;"></div>
+            <div class="key sharp" data-note="F#">F#</div><div class="key sharp" data-note="G#">G#</div><div class="key sharp" data-note="A#">A#</div>
+        </div>
+        <div class="keys-row">
+            <div class="key" data-note="C">C</div><div class="key" data-note="D">D</div><div class="key" data-note="E">E</div>
+            <div class="key" data-note="F">F</div><div class="key" data-note="G">G</div><div class="key" data-note="A">A</div><div class="key" data-note="B">B</div>
+        </div>
+    </div>
     
-    <div class="hud-layer">
-        <div class="top-bar">
-            <div class="level-info">
-                <div class="sub-text">CURRENT LEVEL</div>
-                <div class="big-text" id="level-disp">1 / 8</div>
-            </div>
-            <div class="timer-info">
-                <div class="sub-text">TIME REMAINING</div>
-                <div class="big-text" id="time-disp">03:00</div>
-            </div>
-        </div>
-        
-        <div id="game-msg">WAVE CLEARED</div>
+    <footer>豐狂出品 • Player Suite v4.0</footer>
 
-        <div id="ammo-container">
-            <div class="ammo-label">AMMUNITION</div>
-            <div class="ammo-count"><span id="ammo-val">12</span>/12</div>
-            <div id="reload-msg">⚠ RELOAD REQUIRED (FIST)</div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeSettings">&times;</span>
+            <h2>DSP 設定</h2>
+            <div class="mode-options">
+                <div class="mode-card selected" onclick="setMode('standard')" id="modeStandard">
+                    <strong>標準模式</strong><br><small>吉他/人聲 (2048 pts)</small>
+                </div>
+                <div class="mode-card" onclick="setMode('bass')" id="modeBass">
+                    <strong>低音模式</strong><br><small>貝斯/鋼琴 (4096 pts)</small>
+                </div>
+            </div>
+            <table class="info-table">
+                <tr><th>模式</th><th>最低頻率</th><th>反應速度</th></tr>
+                <tr><td>標準</td><td>~43Hz</td><td>極快</td></tr>
+                <tr><td>低音</td><td>~21Hz</td><td>稍慢</td></tr>
+            </table>
         </div>
-        
-        <div id="ch-left" class="crosshair"></div>
-        <div id="ch-right" class="crosshair"></div>
     </div>
 
-    <div id="canvas-container"></div>
-
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.128.0/build/three.module.js';
-        import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
-
-        // --- 遊戲參數 ---
-        const GAME = {
-            maxLevels: 8,
-            levelDuration: 180, // 3分鐘 (秒)
-            bossSpawnTime: 30,  // 最後30秒
-            ammoMax: 12,
-            bulletSpeed: 50,
-            enemySpeedBase: 2,
-            spawnRateBase: 100, // Frames
-        };
-
-        // --- 全域變數 ---
-        let scene, camera, renderer;
-        let handLandmarker, video;
-        let lastTime = 0;
+    <script>
+        // === CORE VARIABLES ===
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let analyser, dataArray;
+        let isRunning = false;
+        let currentFFTSize = 2048;
+        const A4 = 440;
+        const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
-        // 遊戲狀態機
-        const gameState = {
-            active: false,
-            paused: false,
-            level: 1,
-            timer: GAME.levelDuration,
-            ammo: GAME.ammoMax,
-            score: 0,
-            isBossActive: false,
-            lastShotTime: 0,
-            lastReloadTime: 0,
-            pauseToggleTime: 0
+        // UI
+        const hzEl = document.getElementById('hz');
+        const noteEl = document.getElementById('note');
+        const octEl = document.getElementById('octave');
+        const centsEl = document.getElementById('cents');
+        const canvas = document.getElementById('tunerCanvas');
+        const ctx = canvas.getContext('2d');
+        const keys = document.querySelectorAll('.key');
+
+        // History
+        const historySize = 300; 
+        const pitchHistory = new Array(historySize).fill(null);
+
+        // === RECORDER VARIABLES ===
+        let isRecording = false;
+        let recordedNotes = []; 
+        let currentNoteEvent = null; 
+        let noteStartTime = 0;
+        const MIN_NOTE_DURATION = 100;
+
+        // === INITIALIZATION ===
+        document.getElementById('startBtn').onclick = async function() {
+            this.style.display = 'none';
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                analyser = audioCtx.createAnalyser();
+                setMode('standard'); 
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                isRunning = true;
+                update();
+            } catch (e) { alert("Mic Access Required for Tuner"); }
         };
 
-        // 實體管理
-        const entities = {
-            bullets: [],
-            enemies: [],
-            particles: [] // 爆炸特效
+        // Modal Logic
+        const modal = document.getElementById('settingsModal');
+        document.getElementById('openSettings').onclick = () => modal.style.display = 'block';
+        document.getElementById('closeSettings').onclick = () => modal.style.display = 'none';
+        window.setMode = (mode) => {
+            currentFFTSize = (mode === 'standard') ? 2048 : 4096;
+            if (analyser) {
+                analyser.fftSize = currentFFTSize;
+                dataArray = new Float32Array(analyser.fftSize);
+            }
+            document.getElementById('modeStandard').className = mode === 'standard' ? 'mode-card selected' : 'mode-card';
+            document.getElementById('modeBass').className = mode === 'bass' ? 'mode-card selected' : 'mode-card';
         };
 
-        // 手部狀態
-        const hands = {
-            left: { x: 0, y: 0, active: false, fingers: 0, gesture: '' },
-            right: { x: 0, y: 0, active: false, fingers: 0, gesture: '' }
-        };
+        // === PLAYER / IMPORT LOGIC (NEW IN v4.0) ===
+        const fileInput = document.getElementById('fileInput');
+        const importBtn = document.getElementById('importBtn');
 
-        // 初始化
-        document.getElementById('init-btn').addEventListener('click', async () => {
-            document.getElementById('start-screen').style.display = 'none';
-            await initSystem();
-            startGame();
-        });
+        importBtn.onclick = () => fileInput.click();
 
-        async function initSystem() {
-            // Three.js Setup
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 50; 
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
             
-            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-            
-            // Lighting
-            const light = new THREE.DirectionalLight(0xffffff, 1);
-            light.position.set(0, 10, 10);
-            scene.add(light);
-            scene.add(new THREE.AmbientLight(0x404040));
-
-            // MediaPipe Setup
-            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-            handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`, delegate: "GPU" },
-                runningMode: "VIDEO", numHands: 2, minHandDetectionConfidence: 0.5
-            });
-
-            // Camera Setup
-            video = document.getElementById('video-input');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-            video.srcObject = stream;
-            await new Promise(r => video.onloadedmetadata = () => { video.play(); r(); });
-            
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-        }
-
-        function startGame() {
-            gameState.active = true;
-            gameState.level = 1;
-            startLevel(1);
-            animate();
-        }
-
-        function startLevel(lvl) {
-            gameState.level = lvl;
-            gameState.timer = GAME.levelDuration;
-            gameState.isBossActive = false;
-            
-            // UI Update
-            document.getElementById('level-disp').innerText = `${lvl} / ${GAME.maxLevels}`;
-            document.getElementById('level-disp').classList.remove('warning-text');
-            showMessage(`LEVEL ${lvl} START`);
-            
-            // 清除上一關的敵人
-            entities.enemies.forEach(e => scene.remove(e.mesh));
-            entities.enemies = [];
-        }
-
-        function showMessage(text, duration=2000) {
-            const msgEl = document.getElementById('game-msg');
-            msgEl.innerText = text;
-            msgEl.style.display = 'block';
-            setTimeout(() => { msgEl.style.display = 'none'; }, duration);
-        }
-
-        // --- 核心邏輯 Loop ---
-        function animate() {
-            requestAnimationFrame(animate);
-            const now = performance.now();
-            const delta = (now - lastTime) / 1000;
-            lastTime = now;
-
-            if (!gameState.active) return;
-
-            detectHands();
-
-            // 暫停邏輯
-            if (gameState.paused) return;
-
-            updateGameLogic(delta, now);
-            updateEntities(delta);
-            renderer.render(scene, camera);
-        }
-
-        // --- 手勢偵測與映射 ---
-        function detectHands() {
-            if (!handLandmarker || !video) return;
-            const results = handLandmarker.detectForVideo(video, performance.now());
-            
-            hands.left.active = false;
-            hands.right.active = false;
-
-            if (results.landmarks) {
-                results.landmarks.forEach((lm, index) => {
-                    // 判斷左右手 (鏡像)
-                    const handedness = results.handedness[index][0].categoryName; 
-                    // MediaPipe "Left" = 畫面右邊 = 玩家右手 (因為是自拍鏡頭鏡像)
-                    // MediaPipe "Right" = 畫面左邊 = 玩家左手
-                    
-                    const isPlayerLeft = handedness === "Right"; 
-                    const handObj = isPlayerLeft ? hands.left : hands.right;
-                    
-                    handObj.active = true;
-                    // 轉換座標到 Three.js 世界座標
-                    // 視窗中心 (0,0), Z=0 (螢幕平面)
-                    // X 範圍約 -40 ~ 40, Y 範圍約 -25 ~ 25 (取決於 FOV 和 Z距離)
-                    const screenX = (lm[9].x - 0.5) * -2; // -1 to 1
-                    const screenY = -(lm[9].y - 0.5) * 2; // -1 to 1
-                    
-                    // 投影到 Z=0 平面
-                    const vec = new THREE.Vector3(screenX, screenY, 0.5);
-                    vec.unproject(camera);
-                    const dir = vec.sub(camera.position).normalize();
-                    const distance = -camera.position.z / dir.z;
-                    const pos = camera.position.clone().add(dir.multiplyScalar(distance));
-                    
-                    handObj.x = pos.x;
-                    handObj.y = pos.y;
-                    
-                    // 手指計數
-                    handObj.fingers = countFingers(lm);
-                });
-            }
-            
-            updateCrosshairs();
-            handleInput();
-        }
-
-        function countFingers(lm) {
-            let count = 0;
-            if (lm[8].y < lm[6].y) count++; // Index
-            if (lm[12].y < lm[10].y) count++; // Middle
-            if (lm[16].y < lm[14].y) count++; // Ring
-            if (lm[20].y < lm[18].y) count++; // Pinky
-            // Thumb (simple x check)
-            if (Math.abs(lm[4].x - lm[3].x) > 0.05) count++;
-            return count;
-        }
-
-        function updateCrosshairs() {
-            const chl = document.getElementById('ch-left');
-            const chr = document.getElementById('ch-right');
-            
-            if (hands.left.active) {
-                chl.style.display = 'block';
-                // 轉回 CSS 像素座標
-                const cx = (hands.left.x / (window.innerWidth/20)) * 50 + 50; // 近似映射
-                // 這裡偷懶直接用 MediaPipe 原始座標比較準
-                // 重新計算 UI 座標
-                // 我們在 detectHands 裡只存了 world pos，這裡需要 UI pos... 
-                // 簡單起見，直接讓 cursor 跟隨 world pos 投影
-                const screenPos = new THREE.Vector3(hands.left.x, hands.left.y, 0).project(camera);
-                chl.style.left = `${(screenPos.x + 1) * 50}%`;
-                chl.style.top = `${(-screenPos.y + 1) * 50}%`;
-            } else {
-                chl.style.display = 'none';
-            }
-
-            if (hands.right.active) {
-                chr.style.display = 'block';
-                const screenPos = new THREE.Vector3(hands.right.x, hands.right.y, 0).project(camera);
-                chr.style.left = `${(screenPos.x + 1) * 50}%`;
-                chr.style.top = `${(-screenPos.y + 1) * 50}%`;
-            } else {
-                chr.style.display = 'none';
-            }
-        }
-
-        // --- 輸入處理 (手勢觸發) ---
-        function handleInput() {
-            const now = performance.now();
-
-            // 1. 暫停/繼續 (Left 2/3) - 防抖動
-            if (now - gameState.pauseToggleTime > 1000) {
-                if (hands.left.active && hands.left.fingers === 2 && !gameState.paused) {
-                    gameState.paused = true;
-                    document.getElementById('pause-overlay').style.display = 'flex';
-                    gameState.pauseToggleTime = now;
-                } else if (hands.left.active && hands.left.fingers === 3 && gameState.paused) {
-                    gameState.paused = false;
-                    document.getElementById('pause-overlay').style.display = 'none';
-                    gameState.pauseToggleTime = now;
-                }
-            }
-            if (gameState.paused) return;
-
-            // 2. 左手操作
-            if (hands.left.active) {
-                // 射擊 (1指)
-                if (hands.left.fingers === 1) {
-                    if (gameState.ammo > 0 && now - gameState.lastShotTime > 100) { // 射速限制
-                        shootBullet(hands.left.x, hands.left.y);
-                        gameState.lastShotTime = now;
-                    } else if (gameState.ammo <= 0) {
-                        document.getElementById('reload-msg').style.display = 'block';
-                    }
-                }
-                
-                // 填彈 (握拳 0指)
-                if (hands.left.fingers === 0) {
-                    if (now - gameState.lastReloadTime > 1000 && gameState.ammo < GAME.ammoMax) {
-                        gameState.ammo = GAME.ammoMax;
-                        updateAmmoUI();
-                        createEffect(hands.left.x, hands.left.y, 'reload');
-                        gameState.lastReloadTime = now;
-                    }
-                }
-
-                // 黑洞 (全開 5指)
-                if (hands.left.fingers === 5) {
-                    // 持續吸引
-                    applyBlackHole(hands.left.x, hands.left.y);
-                }
-            }
-
-            // 3. 右手操作 (重砲 - 全開 5指)
-            if (hands.right.active && hands.right.fingers === 5) {
-                applyShockwave(hands.right.x, hands.right.y);
-            }
-        }
-
-        // --- 遊戲邏輯更新 ---
-        function updateGameLogic(delta, now) {
-            // 計時器
-            gameState.timer -= delta;
-            
-            // Boss 生成檢查
-            if (gameState.timer <= GAME.bossSpawnTime && !gameState.isBossActive) {
-                spawnBoss();
-                gameState.isBossActive = true;
-                document.getElementById('level-disp').classList.add('warning-text');
-                showMessage("WARNING: BOSS APPROACHING");
-            }
-
-            // 更新 UI 時間
-            const mins = Math.floor(gameState.timer / 60);
-            const secs = Math.floor(gameState.timer % 60);
-            document.getElementById('time-disp').innerText = 
-                `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-
-            // 過關判定
-            if (gameState.timer <= 0) {
-                if (gameState.level < GAME.maxLevels) {
-                    startLevel(gameState.level + 1);
-                } else {
-                    showMessage("MISSION ACCOMPLISHED - YOU WIN!", 5000);
-                    gameState.active = false;
-                }
-            }
-
-            // 敵人生成 (隨著關卡變快)
-            const spawnRate = Math.max(20, GAME.spawnRateBase - (gameState.level * 5));
-            if (Math.floor(now) % spawnRate === 0 && !gameState.isBossActive) {
-                spawnEnemy(false);
-            }
-        }
-
-        // --- 武器系統 ---
-        function shootBullet(x, y) {
-            gameState.ammo--;
-            updateAmmoUI();
-            
-            // 創建子彈 Mesh
-            const geometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 8);
-            geometry.rotateX(Math.PI / 2);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-            const bullet = new THREE.Mesh(geometry, material);
-            
-            bullet.position.set(x, y, 0); // 從手的位置發射
-            scene.add(bullet);
-            
-            entities.bullets.push({
-                mesh: bullet,
-                velocity: new THREE.Vector3(0, 0, -GAME.bulletSpeed) // 向螢幕深處射擊
-            });
-        }
-
-        function updateAmmoUI() {
-            document.getElementById('ammo-val').innerText = gameState.ammo;
-            if (gameState.ammo > 0) document.getElementById('reload-msg').style.display = 'none';
-        }
-
-        function applyBlackHole(x, y) {
-            // 特效：畫一個黑圈
-            // 邏輯：吸入敵人
-            entities.enemies.forEach(enemy => {
-                if (enemy.isBoss) return; // Boss 免疫黑洞
-                
-                const dx = x - enemy.mesh.position.x;
-                const dy = y - enemy.mesh.position.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < 15) { // 吸引範圍
-                    enemy.mesh.position.x += dx * 0.1;
-                    enemy.mesh.position.y += dy * 0.1;
-                    
-                    if (dist < 2) { // 吸入範圍 (秒殺)
-                        damageEnemy(enemy, 999);
-                        createEffect(x, y, 'blackhole_eat');
-                    }
-                }
-            });
-        }
-
-        function applyShockwave(x, y) {
-            // 右手範圍傷害
-            entities.enemies.forEach(enemy => {
-                const dx = x - enemy.mesh.position.x;
-                const dy = y - enemy.mesh.position.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                
-                if (dist < 10) {
-                    // 推開
-                    enemy.mesh.position.z -= 1; 
-                    enemy.mesh.position.x -= dx * 0.1;
-                    enemy.mesh.position.y -= dy * 0.1;
-                    // 造成微量傷害
-                    damageEnemy(enemy, 0.1); 
-                }
-            });
-        }
-
-        // --- 敵人系統 ---
-        function spawnEnemy(isBoss) {
-            const geometry = isBoss ? new THREE.IcosahedronGeometry(5, 1) : new THREE.OctahedronGeometry(1.5, 0);
-            const material = new THREE.MeshBasicMaterial({ 
-                color: isBoss ? 0xff0055 : 0x00ffff, 
-                wireframe: true 
-            });
-            const mesh = new THREE.Mesh(geometry, material);
-            
-            // 隨機生成位置 (遠處)
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 30 + Math.random() * 20;
-            mesh.position.set(
-                Math.cos(angle) * radius, 
-                Math.sin(angle) * radius, 
-                -50 - Math.random() * 50 // 從深處飛來
-            );
-            
-            scene.add(mesh);
-            
-            entities.enemies.push({
-                mesh: mesh,
-                hp: isBoss ? gameState.level * 50 : gameState.level, // Boss血量多
-                isBoss: isBoss,
-                speed: (GAME.enemySpeedBase + gameState.level * 0.2) * (isBoss ? 0.3 : 1)
-            });
-        }
-
-        function spawnBoss() {
-            spawnEnemy(true);
-        }
-
-        function updateEntities(delta) {
-            // 1. 子彈移動
-            for (let i = entities.bullets.length - 1; i >= 0; i--) {
-                const b = entities.bullets[i];
-                b.mesh.position.add(b.velocity.clone().multiplyScalar(delta));
-                
-                // 超出範圍移除
-                if (b.mesh.position.z < -100) {
-                    scene.remove(b.mesh);
-                    entities.bullets.splice(i, 1);
-                }
-            }
-
-            // 2. 敵人 AI
-            for (let i = entities.enemies.length - 1; i >= 0; i--) {
-                const e = entities.enemies[i];
-                
-                // 飛向玩家 (0,0,0)
-                const dir = new THREE.Vector3(0, 0, 10) // 目標是鏡頭後方
-                    .sub(e.mesh.position).normalize();
-                e.mesh.position.add(dir.multiplyScalar(e.speed * delta));
-                
-                // 自轉特效
-                e.mesh.rotation.x += delta;
-                e.mesh.rotation.y += delta;
-
-                // 碰撞檢測 (子彈擊中)
-                for (let j = entities.bullets.length - 1; j >= 0; j--) {
-                    const b = entities.bullets[j];
-                    const dist = e.mesh.position.distanceTo(b.mesh.position);
-                    
-                    // 撞到了
-                    if (dist < (e.isBoss ? 5 : 2)) {
-                        createEffect(b.mesh.position.x, b.mesh.position.y, 'hit');
-                        damageEnemy(e, 1);
-                        
-                        // 移除子彈
-                        scene.remove(b.mesh);
-                        entities.bullets.splice(j, 1);
-                    }
-                }
-
-                // 敵人撞到玩家 (扣分或結束? 這裡暫時只移除)
-                if (e.mesh.position.z > 0) {
-                    scene.remove(e.mesh);
-                    entities.enemies.splice(i, 1);
-                    // 可以在這裡加扣血邏輯
-                    showMessage("DAMAGE TAKEN!", 500);
-                }
-            }
-        }
-
-        function damageEnemy(enemy, amount) {
-            enemy.hp -= amount;
-            // 閃白光特效
-            enemy.mesh.material.color.setHex(0xffffff);
-            setTimeout(() => {
-                if(enemy.mesh) enemy.mesh.material.color.setHex(enemy.isBoss ? 0xff0055 : 0x00ffff);
-            }, 50);
-
-            if (enemy.hp <= 0) {
-                createEffect(enemy.mesh.position.x, enemy.mesh.position.y, 'explosion');
-                scene.remove(enemy.mesh);
-                const idx = entities.enemies.indexOf(enemy);
-                if (idx > -1) entities.enemies.splice(idx, 1);
-                
-                if(enemy.isBoss) {
-                    showMessage("BOSS DESTROYED! LEVEL COMPLETE");
-                    gameState.score += 1000;
-                    gameState.timer = 0; // 直接過關
-                }
-            }
-        }
-
-        // --- 特效系統 ---
-        function createEffect(x, y, type) {
-            // 簡單的粒子爆炸
-            const count = type === 'explosion' ? 20 : 5;
-            const color = type === 'reload' ? 0x00ff00 : (type === 'explosion' ? 0xff0055 : 0xffff00);
-            
-            const geo = new THREE.BufferGeometry();
-            const pos = [];
-            for(let i=0; i<count; i++) {
-                pos.push(x, y, 0);
-            }
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            const mat = new THREE.PointsMaterial({ color: color, size: 0.5, transparent: true });
-            const pts = new THREE.Points(geo, mat);
-            scene.add(pts);
-            
-            // 動畫
-            let life = 1.0;
-            const dirs = [];
-            for(let i=0; i<count; i++) dirs.push({x:(Math.random()-0.5), y:(Math.random()-0.5)});
-            
-            const animateEffect = () => {
-                life -= 0.05;
-                if(life <= 0) {
-                    scene.remove(pts);
-                    return;
-                }
-                const positions = pts.geometry.attributes.position.array;
-                for(let i=0; i<count; i++) {
-                    positions[i*3] += dirs[i].x;
-                    positions[i*3+1] += dirs[i].y;
-                }
-                pts.geometry.attributes.position.needsUpdate = true;
-                pts.material.opacity = life;
-                requestAnimationFrame(animateEffect);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const xmlContent = e.target.result;
+                playMusicXML(xmlContent);
             };
-            animateEffect();
+            reader.readAsText(file);
+            // Reset input so same file can be selected again
+            fileInput.value = ''; 
+        };
+
+        function playMusicXML(xmlString) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+            const noteNodes = xmlDoc.querySelectorAll("note");
+            
+            if (noteNodes.length === 0) {
+                alert("Invalid or empty MusicXML");
+                return;
+            }
+
+            importBtn.classList.add('playing');
+            importBtn.innerText = "🔊 播放中...";
+
+            let currentTime = audioCtx.currentTime;
+            // Small buffer start
+            currentTime += 0.1;
+
+            noteNodes.forEach((node) => {
+                // Parse XML tags
+                const stepNode = node.querySelector("step");
+                const octaveNode = node.querySelector("octave");
+                const alterNode = node.querySelector("alter");
+                const durationNode = node.querySelector("duration");
+                const isRest = node.querySelector("rest") !== null;
+
+                if (durationNode) {
+                    const durationVal = parseFloat(durationNode.textContent);
+                    // Conversion: In our recorder, we saved ms directly. 
+                    // So duration 500 = 500ms = 0.5s.
+                    // If file is from MuseScore, this mapping might be off (beats), 
+                    // but for self-playback it's 1:1.
+                    const durationSec = durationVal / 1000; 
+
+                    if (!isRest && stepNode && octaveNode) {
+                        let noteName = stepNode.textContent;
+                        if (alterNode && alterNode.textContent === "1") noteName += "#";
+                        
+                        const octave = parseInt(octaveNode.textContent);
+                        const freq = getFreq(noteName, octave);
+                        
+                        // Schedule Sound
+                        playTone(freq, currentTime, durationSec);
+                        
+                        // Schedule UI Highlight (using setTimeout to sync with AudioTime)
+                        const delayMs = (currentTime - audioCtx.currentTime) * 1000;
+                        setTimeout(() => highlightKey(noteName, true), delayMs);
+                        setTimeout(() => highlightKey(noteName, false), delayMs + (durationSec * 1000));
+                        
+                        // Show on Note Display
+                        setTimeout(() => {
+                             hzEl.innerText = freq.toFixed(1);
+                             noteEl.innerText = noteName;
+                             octEl.innerText = octave;
+                        }, delayMs);
+                    }
+                    currentTime += durationSec;
+                }
+            });
+
+            // Reset UI after song
+            const totalTimeMs = (currentTime - audioCtx.currentTime) * 1000;
+            setTimeout(() => {
+                importBtn.classList.remove('playing');
+                importBtn.innerText = "📂 播放 XML";
+            }, totalTimeMs);
         }
 
+        function playTone(freq, startTime, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            
+            // Envelope to avoid clicking
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05); // Attack
+            gain.gain.linearRampToValueAtTime(0, startTime + duration); // Release
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        }
+
+        function getFreq(note, octave) {
+            const allNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const semitones = allNotes.indexOf(note);
+            // MIDI note calculation: (Octave + 1) * 12 + semitones
+            const midi = (octave + 1) * 12 + semitones;
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        function highlightKey(note, active) {
+            // Remove 'playback-active' from all first to be safe (monophonic visual)
+            if (active) {
+                keys.forEach(k => k.classList.remove('playback-active'));
+                const k = document.querySelector(`.key[data-note="${note}"]`);
+                if(k) k.classList.add('playback-active');
+            } else {
+                const k = document.querySelector(`.key[data-note="${note}"]`);
+                if(k) k.classList.remove('playback-active');
+            }
+        }
+
+        // === RECORDER & EXPORT LOGIC ===
+        const recBtn = document.getElementById('recordBtn');
+        const exportBtn = document.getElementById('exportBtn');
+
+        recBtn.onclick = () => {
+            isRecording = !isRecording;
+            if (isRecording) {
+                recordedNotes = [];
+                currentNoteEvent = null;
+                recBtn.innerText = "■ 停止";
+                recBtn.classList.add('recording');
+                exportBtn.style.display = 'none';
+            } else {
+                finishCurrentNote();
+                recBtn.innerText = "● 錄製";
+                recBtn.classList.remove('recording');
+                if (recordedNotes.length > 0) exportBtn.style.display = 'block';
+            }
+        };
+
+        exportBtn.onclick = () => {
+            const xmlContent = generateMusicXML(recordedNotes);
+            const blob = new Blob([xmlContent], { type: 'application/vnd.recordare.musicxml+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `recording_${new Date().toISOString().slice(0,19)}.musicxml`;
+            a.click();
+        };
+
+        // === DSP & LOOP (Original Tuner Logic) ===
+        function detectPitchYIN(buffer, sampleRate) {
+            const threshold = 0.10;
+            const halfSize = Math.floor(buffer.length / 2);
+            const yinBuffer = new Float32Array(halfSize);
+            for (let t = 0; t < halfSize; t++) {
+                let sum = 0;
+                for (let i = 0; i < halfSize; i+=2) {
+                    const d = buffer[i] - buffer[i + t];
+                    sum += d * d;
+                }
+                yinBuffer[t] = sum;
+            }
+            yinBuffer[0] = 1;
+            let runningSum = 0;
+            for (let t = 1; t < halfSize; t++) {
+                runningSum += yinBuffer[t];
+                yinBuffer[t] *= t / runningSum;
+            }
+            let tau = -1;
+            for (let t = 2; t < halfSize; t++) {
+                if (yinBuffer[t] < threshold) {
+                    while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++;
+                    tau = t;
+                    break;
+                }
+            }
+            if (tau === -1) return -1;
+            const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
+            return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
+        }
+
+        function update() {
+            if (!isRunning) return;
+            analyser.getFloatTimeDomainData(dataArray);
+            
+            let rms = 0;
+            for (let i=0; i<dataArray.length; i+=4) rms += dataArray[i]*dataArray[i];
+            rms = Math.sqrt(rms / (dataArray.length/4));
+
+            let cents = null;
+            let detectedNote = null;
+            let detectedOctave = null;
+
+            if (rms > 0.01) {
+                const pitch = detectPitchYIN(dataArray, audioCtx.sampleRate);
+                const minFreq = currentFFTSize === 4096 ? 20 : 40;
+
+                if (pitch !== -1 && pitch > minFreq && pitch < 4200) {
+                    const noteNum = 12 * (Math.log(pitch / A4) / Math.log(2));
+                    const roundedNote = Math.round(noteNum) + 69;
+                    detectedNote = notes[roundedNote % 12];
+                    detectedOctave = Math.floor(roundedNote / 12) - 1;
+                    
+                    const freqFromNote = A4 * Math.pow(2, (roundedNote - 69) / 12);
+                    cents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
+
+                    hzEl.innerText = pitch.toFixed(1);
+                    noteEl.innerText = detectedNote;
+                    octEl.innerText = detectedOctave;
+                    centsEl.innerText = (cents > 0 ? "+" : "") + cents;
+                    centsEl.style.color = Math.abs(cents) < 5 ? "#4caf50" : "#ccc";
+                    
+                    // Only update visual keyboard if NOT currently playing back XML
+                    if (!importBtn.classList.contains('playing')) {
+                        keys.forEach(k => k.classList.remove('active'));
+                        const k = document.querySelector(`.key[data-note="${detectedNote}"]`);
+                        if(k) k.classList.add('active');
+                    }
+                }
+            }
+
+            if (isRecording) processRecording(detectedNote, detectedOctave);
+
+            pitchHistory.pop();
+            pitchHistory.unshift(cents);
+            drawVisualizer();
+            requestAnimationFrame(update);
+        }
+
+        function processRecording(note, octave) {
+            const now = Date.now();
+            if (currentNoteEvent && note === currentNoteEvent.note && octave === currentNoteEvent.octave) {
+                // holding
+            } else {
+                if (currentNoteEvent) {
+                    const duration = now - noteStartTime;
+                    if (duration > MIN_NOTE_DURATION) {
+                        recordedNotes.push({ ...currentNoteEvent, duration });
+                    }
+                }
+                if (note) {
+                    currentNoteEvent = { note, octave };
+                    noteStartTime = now;
+                } else {
+                    currentNoteEvent = null;
+                }
+            }
+        }
+
+        function finishCurrentNote() {
+            if (currentNoteEvent && isRecording) {
+                const duration = Date.now() - noteStartTime;
+                if (duration > MIN_NOTE_DURATION) recordedNotes.push({ ...currentNoteEvent, duration });
+                currentNoteEvent = null;
+            }
+        }
+
+        function generateMusicXML(notesData) {
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Audio Recording</part-name></score-part></part-list>
+  <part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
+            notesData.forEach(n => {
+                const step = n.note.charAt(0);
+                const alter = n.note.includes('#') ? 1 : 0;
+                xml += `<note><pitch><step>${step}</step>${alter ? '<alter>1</alter>' : ''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`;
+            });
+            xml += `</measure></part></score-partwise>`;
+            return xml;
+        }
+
+        function drawVisualizer() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            const w = canvas.width, h = canvas.height;
+            const centerW = w * 0.15;
+            
+            ctx.fillStyle = "#e66a4e"; ctx.fillRect(0,0,w,h); 
+            ctx.fillStyle = "#3e8e41"; ctx.fillRect(w/2 - centerW/2, 0, centerW, h); 
+            ctx.fillStyle = "#111"; ctx.fillRect(w/2 + centerW/2, 0, w, h); 
+            
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath();
+            const rowH = h / historySize;
+            for(let i=0; i<historySize; i++) {
+                if(pitchHistory[i] !== null) {
+                    const val = Math.max(-50, Math.min(50, pitchHistory[i]));
+                    const x = (val + 50) / 100 * w;
+                    const y = i * rowH;
+                    if(i===0 || pitchHistory[i-1]===null) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+                }
+            }
+            ctx.stroke();
+        }
     </script>
 </body>
 </html>
