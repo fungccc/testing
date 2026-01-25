@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v6.2 Universal Format</title>
+    <title>Web Tuner T1 - v6.3 Final Fix</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -142,7 +142,7 @@
         <div class="action-area">
             <button class="btn rec-btn" id="recordBtn">● REC</button>
             <button class="btn rec-btn" id="exportBtn" style="display:none; border-color:#fff; color:#fff;">⬇ XML</button>
-            <input type="file" id="fileInput" class="hidden-input" accept=".musicxml,.xml,.mxl,*">
+            <input type="file" id="fileInput" class="hidden-input" accept="*">
             <button class="btn play-btn" id="importBtn">▶ PLAY</button>
         </div>
     </header>
@@ -182,7 +182,7 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v6.2 Universal Format</footer>
+    <footer>豐狂出品 • v6.3 Final Fix</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -249,7 +249,7 @@
 
     <script>
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        let analyser, micSource, gainNode, dataArray;
+        let analyser, micSource, gainNode, dataArray, mediaStream; // added mediaStream ref
         let toneOsc = null, toneGain = null;
         let isRunning = false;
         let currentFFTSize = 2048; 
@@ -345,17 +345,41 @@
             ui.targetToggle.checked = true; applyUI(); saveSettings();
         };
 
+        // === MIC START & STOP LOGIC (FIX) ===
         ui.startBtn.onclick = async function() {
             this.style.display = 'none';
             if (audioCtx.state === 'suspended') await audioCtx.resume();
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+                // FIXED: Assign to global var to allow stopping
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+                
                 analyser = audioCtx.createAnalyser(); analyser.smoothingTimeConstant = 0.8;
                 gainNode = audioCtx.createGain(); gainNode.gain.value = 5.0; 
-                micSource = audioCtx.createMediaStreamSource(stream); micSource.connect(gainNode); gainNode.connect(analyser); 
+                micSource = audioCtx.createMediaStreamSource(mediaStream); micSource.connect(gainNode); gainNode.connect(analyser); 
                 setMode('turbo'); isRunning = true; update();
             } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
+
+        // FIXED: Stop Mic on visibility change
+        function stopMic() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            isRunning = false;
+            ui.startBtn.style.display = 'block'; // Show start button again
+            ui.startBtn.innerText = "⚡ 重新啟動 (Resume)";
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopMic();
+                playbackManager.stop();
+            }
+        });
+        
+        // Also ensure stop on unload
+        window.addEventListener('pagehide', stopMic);
 
         ui.octavePills.forEach(pill => {
             pill.addEventListener('click', function() {
@@ -424,6 +448,7 @@
 
         function update() {
             if (!isRunning) return;
+            if (!analyser) return; // safety
             analyser.getFloatTimeDomainData(dataArray);
             let sum = 0; for (let i = 0; i < dataArray.length; i+=4) sum += dataArray[i] * dataArray[i];
             const rms = Math.sqrt(sum / (dataArray.length/4));
@@ -540,13 +565,16 @@
 
         const fileInput = document.getElementById('fileInput');
         ui.importBtn.onclick = () => {
+            // FORCE RESUME AUDIO CTX
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
             if (playbackManager.isPlaying) { playbackManager.stop(); } else { fileInput.click(); }
         };
 
         fileInput.onchange = async (e) => {
             const f = e.target.files[0]; if(!f)return;
             try {
-                if (f.name.endsWith('.mxl')) {
+                if (f.name.toLowerCase().endsWith('.mxl')) {
                     if (!window.JSZip) { alert("JSZip library not loaded. Check internet connection."); return; }
                     const zip = await JSZip.loadAsync(f);
                     const xmlFile = Object.values(zip.files).find(file => file.name.endsWith('.xml') || file.name.endsWith('.musicxml'));
@@ -560,10 +588,19 @@
         };
 
         function playMusicXML(xml) {
-             if (audioCtx.state === 'suspended') audioCtx.resume();
              const parser = new DOMParser(); const doc = parser.parseFromString(xml, "text/xml");
              const notes = doc.querySelectorAll("note");
              
+             // FIXED: Parse Divisions and Tempo (Default 120 if missing) for correct duration
+             let divisions = 1;
+             const divNode = doc.querySelector("divisions");
+             if (divNode) divisions = parseFloat(divNode.textContent);
+             
+             // Look for BPM (basic check) - Default to 120
+             let bpm = 120;
+             const perMin = doc.querySelector("per-minute");
+             if (perMin) bpm = parseFloat(perMin.textContent);
+
              playbackManager.isPlaying = true;
              ui.importBtn.classList.add('playing'); 
              ui.importBtn.textContent = "■ STOP";
@@ -573,8 +610,32 @@
              notes.forEach(n => {
                 const s = n.querySelector("step")?.textContent; const o = n.querySelector("octave")?.textContent;
                 const a = n.querySelector("alter")?.textContent; const d = n.querySelector("duration")?.textContent;
+                
                 if(d && s) {
-                    const ds = parseFloat(d)/1000; let nn = s+(a==="1"?"#":"");
+                    let durVal = parseFloat(d);
+                    let ds = 0;
+                    
+                    // HEURISTIC: If duration is raw ms (from our recorder, > 50 usually and divisions=1000)
+                    // Our recorder sets divisions=1000, and duration=ms.
+                    // Standard MusicXML: duration is in divisions.
+                    // Math: RealSeconds = (Duration / Divisions) * (60 / BPM)
+                    
+                    // If file is from our recorder (divisions=1000), calculation:
+                    // (ms / 1000) * (60/120) = ms * 0.0005 -> WRONG if we want MS directly.
+                    // But our recorder writes raw ms into duration.
+                    
+                    if (divisions === 1000 && bpm === 120 && durVal > 50) {
+                        // Likely our recorder file -> treat as MS directly
+                        ds = durVal / 1000; 
+                    } else {
+                        // Standard MusicXML Logic
+                        ds = (durVal / divisions) * (60 / bpm);
+                    }
+                    
+                    // Safety clamp
+                    if (isNaN(ds) || ds < 0.05) ds = 0.1;
+
+                    let nn = s+(a==="1"?"#":"");
                     const f = appSettings.a4 * Math.pow(2, ((parseInt(o)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
                     
                     const tId1 = setTimeout(() => {
