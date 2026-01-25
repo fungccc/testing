@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v6.0 Pro Edition</title>
+    <title>Web Tuner T1 - v6.1 Control Freak</title>
     <style>
         :root {
             --bg-color: #000000;
@@ -11,20 +11,14 @@
             --accent-green: #66cc66;
             --accent-red: #ff5252;
             --accent-blue: #2979ff;
-            --accent-yellow: #ffd700; /* NEW FEATURE: Target Mode Color */
+            --accent-yellow: #ffd700;
         }
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
+            margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            user-select: none; -webkit-user-select: none; touch-action: manipulation;
         }
         
         header {
@@ -36,12 +30,16 @@
         .btn {
             border: 1px solid #555; background: transparent; color: #ccc;
             padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
-            display: flex; align-items: center; gap: 5px; font-weight: 600;
+            display: flex; align-items: center; gap: 5px; font-weight: 600; min-width: 80px; justify-content: center;
         }
-        .rec-btn.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+        .rec-btn.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); animation: pulse 2s infinite; }
+        
+        /* NEW: Stop Button Style */
         .play-btn { color: var(--accent-blue); border-color: var(--accent-blue); }
-        .play-btn.playing { background: var(--accent-blue); color: white; }
+        .play-btn.playing { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+
         .hidden-input { display: none; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
         .readout {
             display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
@@ -54,12 +52,9 @@
         .note-octave { font-size: 2.5rem; color: #aaa; margin-left: 5px;}
         .cents-val { font-size: 1.4rem; color: #888; font-family: monospace; }
         
-        /* NEW FEATURE: Target Mode Indicator */
         .target-mode-active .note-display { color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
 
-        .viz-container {
-            flex: 1; position: relative; background: #000; overflow: hidden;
-        }
+        .viz-container { flex: 1; position: relative; background: #000; overflow: hidden; }
         canvas { width: 100%; height: 100%; display: block; }
         
         .start-btn {
@@ -69,7 +64,6 @@
             font-size: 1.2rem; z-index: 30; box-shadow: 0 0 20px rgba(102, 204, 102, 0.4);
         }
 
-        /* Keyboard Area */
         .keyboard-area { background: #000; padding: 10px 0; z-index: 20; border-top: 1px solid #222; }
         
         .octave-scroller {
@@ -111,13 +105,12 @@
         .mode-card.selected { border-color: var(--accent-green); background: rgba(102, 204, 102, 0.1); }
 
         .setting-group { margin-top: 25px; border-top: 1px solid #333; padding-top: 15px; }
+        .setting-label { display: flex; justify-content: space-between; color: #ccc; margin-bottom: 5px; font-size: 0.9rem; }
+        .setting-val { color: var(--accent-blue); font-family: monospace; }
         .slider-container { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
         input[type=range] { flex: 1; height: 6px; background: #333; border-radius: 3px; outline: none; -webkit-appearance: none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: var(--accent-blue); border-radius: 50%; cursor: pointer; }
         
-        /* NEW FEATURE: UI Styles for New Controls */
-        .setting-label { display: flex; justify-content: space-between; color: #ccc; margin-bottom: 5px; font-size: 0.9rem; }
-        .setting-val { color: var(--accent-blue); font-family: monospace; }
         .toggle-switch { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-top: 10px; }
         .toggle-switch input { display: none; }
         .slider { width: 40px; height: 20px; background: #333; border-radius: 20px; position: relative; transition: 0.2s; }
@@ -188,13 +181,12 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v6.0 Pro Edition</footer>
+    <footer>豐狂出品 • v6.1 Control Freak</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="closeSettings">&times;</span>
             <h2 style="color:white; margin-top:0;">設定 (Settings)</h2>
-            
             <div class="mode-options">
                 <div class="mode-card selected" onclick="setMode('turbo')" id="modeTurbo">
                     <strong style="color:#fff">🎹 極速模式</strong><br><small style="color:#888">一般使用 (靈敏)</small>
@@ -203,7 +195,6 @@
                     <strong style="color:#fff">🐢 低音模式</strong><br><small style="color:#888">貝斯/低頻專用</small>
                 </div>
             </div>
-
             <div class="setting-group">
                 <div class="setting-label">🔊 發聲部音量 (Tone Volume) <span id="volValueDisplay" class="setting-val">150%</span></div>
                 <div class="slider-container">
@@ -212,7 +203,6 @@
                     <span style="font-size:1.2rem;">🔊</span>
                 </div>
             </div>
-
             <div class="setting-group">
                 <div class="setting-label">🎹 A4 基準音 (Concert Pitch) <span id="a4Display" class="setting-val">440 Hz</span></div>
                 <div class="slider-container">
@@ -221,7 +211,6 @@
                     <span style="color:#888; font-size:0.8rem;">450</span>
                 </div>
             </div>
-
             <div class="setting-group">
                 <div class="setting-label">🎯 目標音鎖定 (Target Mode)</div>
                 <label class="toggle-switch">
@@ -229,19 +218,15 @@
                     <div class="slider"></div>
                     <span style="font-size:0.8rem; color:#ccc;">啟用鎖定 (Lock)</span>
                 </label>
-                
-                <select id="targetNoteSelect" class="dark-select" disabled>
-                    </select>
-                
+                <select id="targetNoteSelect" class="dark-select" disabled></select>
                 <div class="setting-label" style="margin-top:10px; font-size:0.8rem;">樂器 Preset (快速設定):</div>
                 <div class="preset-btn-group">
-                    <button class="preset-btn" onclick="applyPreset('guitar')">🎸 Guitar (Std)</button>
-                    <button class="preset-btn" onclick="applyPreset('bass')">🎸 Bass (Std)</button>
+                    <button class="preset-btn" onclick="applyPreset('guitar')">🎸 Guitar</button>
+                    <button class="preset-btn" onclick="applyPreset('bass')">🎸 Bass</button>
                     <button class="preset-btn" onclick="applyPreset('ukulele')">Ukulele</button>
                     <button class="preset-btn" onclick="applyPreset('violin')">Violin</button>
                 </div>
             </div>
-
             <div class="setting-group">
                 <div class="setting-label">🚪 噪音門檻 (Noise Gate) <span id="gateDisplay" class="setting-val">Low</span></div>
                 <div class="slider-container">
@@ -250,7 +235,6 @@
                     <span style="font-size:0.8rem;">抗噪</span>
                 </div>
             </div>
-
             <div class="setting-group">
                 <div class="setting-label">🌊 穩定度 (Stability) <span id="smoothDisplay" class="setting-val">Balanced</span></div>
                 <div class="slider-container">
@@ -259,7 +243,6 @@
                     <span style="font-size:0.8rem;">平滑</span>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -271,31 +254,16 @@
         let currentFFTSize = 2048; 
         let downsampleStep = 2;
         
-        // --- NEW FEATURE: Centralized Settings State ---
         const defaultSettings = {
-            a4: 440,
-            gate: 0.003,
-            smoothing: 0.3, // "Stability" (Old value weight)
-            targetMode: false,
-            targetNoteIndex: 69 // A4 (MIDI 69)
+            a4: 440, gate: 0.003, smoothing: 0.3, targetMode: false, targetNoteIndex: 69 
         };
-        
         let appSettings = { ...defaultSettings };
-        
-        // Load Settings
         const saved = localStorage.getItem('tuner_v6_settings');
-        if (saved) {
-            try { appSettings = { ...defaultSettings, ...JSON.parse(saved) }; } catch(e){}
-        }
-        function saveSettings() {
-            localStorage.setItem('tuner_v6_settings', JSON.stringify(appSettings));
-        }
+        if (saved) { try { appSettings = { ...defaultSettings, ...JSON.parse(saved) }; } catch(e){} }
+        function saveSettings() { localStorage.setItem('tuner_v6_settings', JSON.stringify(appSettings)); }
 
-        // --- Existing Variables ---
         let keyboardOctave = 4;
         let masterVolume = 1.5;
-        
-        // Remove const A4 = 440; -> replaced by appSettings.a4
         const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         
         const ui = {
@@ -311,7 +279,6 @@
             octavePills: document.querySelectorAll('.pill[data-oct]'),
             volSlider: document.getElementById('volSlider'),
             volDisplay: document.getElementById('volValueDisplay'),
-            // NEW UI Elements
             a4Slider: document.getElementById('a4Slider'),
             a4Display: document.getElementById('a4Display'),
             gateSlider: document.getElementById('gateSlider'),
@@ -336,10 +303,9 @@
         let smoothedCents = 0;
 
         // === SETUP ===
-        // Populate Target Note Select (C1 to B7)
         function initTargetSelect() {
             ui.targetSelect.innerHTML = "";
-            for (let i = 24; i <= 107; i++) { // C1 to B7
+            for (let i = 24; i <= 107; i++) { 
                 const noteName = notes[i % 12];
                 const oct = Math.floor(i / 12) - 1;
                 const opt = document.createElement('option');
@@ -350,219 +316,105 @@
         }
         initTargetSelect();
 
-        // Apply UI values from State
         function applyUI() {
             ui.a4Slider.value = appSettings.a4;
             ui.a4Display.innerText = appSettings.a4 + " Hz";
-            
             ui.gateSlider.value = appSettings.gate;
             ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1);
-
             ui.smoothSlider.value = appSettings.smoothing;
             ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%";
-
             ui.targetToggle.checked = appSettings.targetMode;
             ui.targetSelect.disabled = !appSettings.targetMode;
             ui.targetSelect.value = appSettings.targetNoteIndex;
-            
             if (appSettings.targetMode) ui.appBody.classList.add('target-mode-active');
             else ui.appBody.classList.remove('target-mode-active');
         }
         applyUI();
 
-        // === NEW FEATURE: Settings Event Listeners ===
-        ui.a4Slider.addEventListener('input', function() {
-            appSettings.a4 = parseInt(this.value);
-            ui.a4Display.innerText = appSettings.a4 + " Hz";
-            saveSettings();
-        });
-
-        ui.gateSlider.addEventListener('input', function() {
-            appSettings.gate = parseFloat(this.value);
-            ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1);
-            saveSettings();
-        });
-
-        ui.smoothSlider.addEventListener('input', function() {
-            appSettings.smoothing = parseFloat(this.value);
-            ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%";
-            saveSettings();
-        });
-
-        ui.targetToggle.addEventListener('change', function() {
-            appSettings.targetMode = this.checked;
-            ui.targetSelect.disabled = !this.checked;
-            if (this.checked) ui.appBody.classList.add('target-mode-active');
-            else ui.appBody.classList.remove('target-mode-active');
-            saveSettings();
-        });
-
-        ui.targetSelect.addEventListener('change', function() {
-            appSettings.targetNoteIndex = parseInt(this.value);
-            saveSettings();
-        });
-
-        // NEW FEATURE: Instrument Presets
+        ui.a4Slider.addEventListener('input', function() { appSettings.a4 = parseInt(this.value); ui.a4Display.innerText = appSettings.a4 + " Hz"; saveSettings(); });
+        ui.gateSlider.addEventListener('input', function() { appSettings.gate = parseFloat(this.value); ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1); saveSettings(); });
+        ui.smoothSlider.addEventListener('input', function() { appSettings.smoothing = parseFloat(this.value); ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%"; saveSettings(); });
+        ui.targetToggle.addEventListener('change', function() { appSettings.targetMode = this.checked; ui.targetSelect.disabled = !this.checked; if (this.checked) ui.appBody.classList.add('target-mode-active'); else ui.appBody.classList.remove('target-mode-active'); saveSettings(); });
+        ui.targetSelect.addEventListener('change', function() { appSettings.targetNoteIndex = parseInt(this.value); saveSettings(); });
         window.applyPreset = (inst) => {
-            // Only sets up the target select, doesn't force mode unless desired
-            // Rule: "Not affect original free detection". So we just update select options or select specific note.
-            // Simplified: User picks preset -> Target Mode ON -> Target Select filtered? 
-            // Constraint: "Choice preset only affects Target Note Locking logic".
-            // Let's just set the dropdown to a common starting note for that instrument to show it works,
-            // or we could filter the dropdown. For simplicity in single file, we keep full chromatic dropdown
-            // but jump to standard tuning notes.
-            
-            let startNote = 69; // A4
-            if (inst === 'guitar') startNote = 40; // E2
-            if (inst === 'bass') startNote = 28; // E1
-            if (inst === 'ukulele') startNote = 69; // A4 (Standard GCEA)
-            if (inst === 'violin') startNote = 69; // A4
-
-            appSettings.targetNoteIndex = startNote;
-            appSettings.targetMode = true; // Auto enable for convenience
-            ui.targetToggle.checked = true;
-            applyUI();
-            saveSettings();
+            let startNote = 69; 
+            if (inst === 'guitar') startNote = 40; if (inst === 'bass') startNote = 28; 
+            if (inst === 'ukulele') startNote = 69; if (inst === 'violin') startNote = 69; 
+            appSettings.targetNoteIndex = startNote; appSettings.targetMode = true; 
+            ui.targetToggle.checked = true; applyUI(); saveSettings();
         };
 
-        // ... Existing Start Logic ...
         ui.startBtn.onclick = async function() {
             this.style.display = 'none';
             if (audioCtx.state === 'suspended') await audioCtx.resume();
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
-                });
-                analyser = audioCtx.createAnalyser();
-                analyser.smoothingTimeConstant = 0.8;
-                
-                gainNode = audioCtx.createGain();
-                gainNode.gain.value = 5.0; 
-
-                micSource = audioCtx.createMediaStreamSource(stream);
-                micSource.connect(gainNode);
-                gainNode.connect(analyser); 
-                
-                setMode('turbo');
-                isRunning = true;
-                update();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+                analyser = audioCtx.createAnalyser(); analyser.smoothingTimeConstant = 0.8;
+                gainNode = audioCtx.createGain(); gainNode.gain.value = 5.0; 
+                micSource = audioCtx.createMediaStreamSource(stream); micSource.connect(gainNode); gainNode.connect(analyser); 
+                setMode('turbo'); isRunning = true; update();
             } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
 
-        // Scrollable Octave Control
         ui.octavePills.forEach(pill => {
             pill.addEventListener('click', function() {
-                ui.octavePills.forEach(p => p.classList.remove('active'));
-                this.classList.add('active');
+                ui.octavePills.forEach(p => p.classList.remove('active')); this.classList.add('active');
                 keyboardOctave = parseInt(this.getAttribute('data-oct'));
                 this.scrollIntoView({behavior: "smooth", block: "nearest", inline: "center"});
             });
         });
-
         ui.volSlider.addEventListener('input', function() {
-            masterVolume = parseFloat(this.value);
-            ui.volDisplay.textContent = Math.round(masterVolume * 100) + "%";
+            masterVolume = parseFloat(this.value); ui.volDisplay.textContent = Math.round(masterVolume * 100) + "%";
             if (toneGain) toneGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.1);
         });
 
-        // Updated StartTone to use appSettings.a4
         function startTone(noteName) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const semitones = notes.indexOf(noteName);
-            const noteNum = (keyboardOctave + 1) * 12 + semitones;
-            // NEW FEATURE: A4 Calibration Usage
+            const semitones = notes.indexOf(noteName); const noteNum = (keyboardOctave + 1) * 12 + semitones;
             const freq = appSettings.a4 * Math.pow(2, (noteNum - 69) / 12);
-
             if (toneOsc) stopTone();
-
-            toneOsc = audioCtx.createOscillator();
-            toneGain = audioCtx.createGain();
-            
-            toneOsc.type = 'sine';
-            toneOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            
-            toneGain.gain.setValueAtTime(0, audioCtx.currentTime);
-            toneGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.05);
-
-            toneGain.connect(audioCtx.destination);
-            if (analyser) toneGain.connect(analyser); 
-
-            toneOsc.connect(toneGain);
-            toneOsc.start();
+            toneOsc = audioCtx.createOscillator(); toneGain = audioCtx.createGain();
+            toneOsc.type = 'sine'; toneOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            toneGain.gain.setValueAtTime(0, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.05);
+            toneGain.connect(audioCtx.destination); if (analyser) toneGain.connect(analyser); 
+            toneOsc.connect(toneGain); toneOsc.start();
         }
-
         function stopTone() {
             if (toneOsc && toneGain) {
                 const stopTime = audioCtx.currentTime + 0.1;
-                toneGain.gain.cancelScheduledValues(audioCtx.currentTime);
-                toneGain.gain.setValueAtTime(toneGain.gain.value, audioCtx.currentTime);
-                toneGain.gain.linearRampToValueAtTime(0, stopTime);
+                toneGain.gain.cancelScheduledValues(audioCtx.currentTime); toneGain.gain.setValueAtTime(toneGain.gain.value, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(0, stopTime);
                 toneOsc.stop(stopTime);
-                
-                const oldOsc = toneOsc; const oldGain = toneGain;
-                setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200);
-                toneOsc = null; toneGain = null;
+                const oldOsc = toneOsc; const oldGain = toneGain; setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200); toneOsc = null; toneGain = null;
             }
         }
-
         ui.keys.forEach(key => {
             const note = key.getAttribute('data-note');
             const press = (e) => { e.preventDefault(); key.classList.add('pressed'); startTone(note); };
             const release = (e) => { e.preventDefault(); key.classList.remove('pressed'); stopTone(); };
-
-            key.addEventListener('mousedown', press);
-            key.addEventListener('mouseup', release);
-            key.addEventListener('mouseleave', release);
-            key.addEventListener('touchstart', press);
-            key.addEventListener('touchend', release);
+            key.addEventListener('mousedown', press); key.addEventListener('mouseup', release); key.addEventListener('mouseleave', release); key.addEventListener('touchstart', press); key.addEventListener('touchend', release);
         });
 
         window.setMode = (mode) => {
-            if (mode === 'turbo') {
-                currentFFTSize = 2048; downsampleStep = 2;
-                document.getElementById('modeTurbo').className = 'mode-card selected';
-                document.getElementById('modeBass').className = 'mode-card';
-            } else {
-                currentFFTSize = 4096; downsampleStep = 2;
-                document.getElementById('modeTurbo').className = 'mode-card';
-                document.getElementById('modeBass').className = 'mode-card selected';
-            }
-            if (analyser) {
-                analyser.fftSize = currentFFTSize;
-                dataArray = new Float32Array(analyser.fftSize);
-            }
+            if (mode === 'turbo') { currentFFTSize = 2048; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card selected'; document.getElementById('modeBass').className = 'mode-card'; }
+            else { currentFFTSize = 4096; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card'; document.getElementById('modeBass').className = 'mode-card selected'; }
+            if (analyser) { analyser.fftSize = currentFFTSize; dataArray = new Float32Array(analyser.fftSize); }
         };
-
         const modal = document.getElementById('settingsModal');
         document.getElementById('openSettings').onclick = () => modal.style.display = 'block';
         document.getElementById('closeSettings').onclick = () => modal.style.display = 'none';
 
         function detectPitch(buffer, sampleRate) {
-            const threshold = 0.15;
-            const halfSize = Math.floor(buffer.length / 2);
-            const yinBuffer = new Float32Array(halfSize);
+            const threshold = 0.15; const halfSize = Math.floor(buffer.length / 2); const yinBuffer = new Float32Array(halfSize);
             for (let t = 0; t < halfSize; t++) {
                 let sum = 0;
-                for (let i = 0; i < halfSize; i += downsampleStep) {
-                    const d = buffer[i] - buffer[i + t];
-                    sum += d * d;
-                }
+                for (let i = 0; i < halfSize; i += downsampleStep) { const d = buffer[i] - buffer[i + t]; sum += d * d; }
                 yinBuffer[t] = sum;
             }
-            yinBuffer[0] = 1;
-            let runningSum = 0;
-            for (let t = 1; t < halfSize; t++) {
-                runningSum += yinBuffer[t];
-                yinBuffer[t] *= t / runningSum;
-            }
+            yinBuffer[0] = 1; let runningSum = 0;
+            for (let t = 1; t < halfSize; t++) { runningSum += yinBuffer[t]; yinBuffer[t] *= t / runningSum; }
             let tau = -1;
             for (let t = 2; t < halfSize; t++) {
-                if (yinBuffer[t] < threshold) {
-                    while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++;
-                    tau = t;
-                    break;
-                }
+                if (yinBuffer[t] < threshold) { while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++; tau = t; break; }
             }
             if (tau === -1) return -1;
             const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
@@ -572,85 +424,43 @@
         function update() {
             if (!isRunning) return;
             analyser.getFloatTimeDomainData(dataArray);
-            
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i+=4) sum += dataArray[i] * dataArray[i];
+            let sum = 0; for (let i = 0; i < dataArray.length; i+=4) sum += dataArray[i] * dataArray[i];
             const rms = Math.sqrt(sum / (dataArray.length/4));
 
-            let cents = null;
-            let detectedNote = null;
-            let detectedOctave = null;
-            let hasValidSignal = false;
+            let cents = null; let detectedNote = null; let detectedOctave = null; let hasValidSignal = false;
 
-            // NEW FEATURE: Noise Gate
             if (rms > appSettings.gate) {
                 const pitch = detectPitch(dataArray, audioCtx.sampleRate);
                 const minFreq = currentFFTSize === 4096 ? 25 : 50;
 
                 if (pitch !== -1 && pitch > minFreq && pitch < 4200) {
                     hasValidSignal = true;
-
-                    // NEW FEATURE: A4 Calibration Usage in Detection
-                    const A4 = appSettings.a4; // Local const for calculation
-
-                    // Standard detection math (with calibrated A4)
+                    const A4 = appSettings.a4;
                     const noteNumFloat = 12 * (Math.log(pitch / A4) / Math.log(2));
                     let roundedNote = Math.round(noteNumFloat) + 69;
-
-                    // NEW FEATURE: Target Note Mode Logic
-                    if (appSettings.targetMode) {
-                        // Force calculation against the Target Note, not the nearest note
-                        // MIDI note of target
-                        const targetMIDI = appSettings.targetNoteIndex;
-                        roundedNote = targetMIDI;
-                    }
-
-                    detectedNote = notes[roundedNote % 12];
-                    detectedOctave = Math.floor(roundedNote / 12) - 1;
+                    if (appSettings.targetMode) roundedNote = appSettings.targetNoteIndex;
                     
+                    detectedNote = notes[roundedNote % 12]; detectedOctave = Math.floor(roundedNote / 12) - 1;
                     const freqFromNote = A4 * Math.pow(2, (roundedNote - 69) / 12);
                     const rawCents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
-                    
-                    // NEW FEATURE: Adjustable Smoothing
-                    // appSettings.smoothing is Stability (History weight). 
-                    // Formula: New = (Old * Stability) + (New * (1-Stability))
-                    // wait, standard LPF: out = out + alpha * (in - out).
-                    // Or linear interp: (Old * k) + (New * (1-k)).
-                    // Original code: (smoothed * 0.3) + (raw * 0.7).
-                    // If slider is "Stability" (0.1 to 0.9):
-                    // High stability (0.9) means mostly old value.
-                    const k = appSettings.smoothing; 
-                    smoothedCents = (smoothedCents * k) + (rawCents * (1 - k));
-                    
+                    smoothedCents = (smoothedCents * appSettings.smoothing) + (rawCents * (1 - appSettings.smoothing));
                     cents = smoothedCents;
 
-                    lastValidCents = cents;
-                    framesSinceLastSignal = 0; 
-                    currentCents = cents; 
-                    isSignalActive = true;
-
-                    ui.hz.textContent = pitch.toFixed(1);
-                    ui.cents.textContent = (cents > 0 ? "+" : "") + cents.toFixed(0);
+                    lastValidCents = cents; framesSinceLastSignal = 0; currentCents = cents; isSignalActive = true;
+                    ui.hz.textContent = pitch.toFixed(1); ui.cents.textContent = (cents > 0 ? "+" : "") + cents.toFixed(0);
                     
-                    // Update UI text (Target mode overrides detected text effectively via logic above)
                     if (lastNoteName !== detectedNote + detectedOctave) {
-                        ui.note.textContent = detectedNote;
-                        ui.oct.textContent = detectedOctave;
+                        ui.note.textContent = detectedNote; ui.oct.textContent = detectedOctave;
                         lastNoteName = detectedNote + detectedOctave;
-                        
                         ui.keys.forEach(k => k.classList.remove('active'));
-                        const k = document.querySelector(`.key[data-note="${detectedNote}"]`);
-                        if(k) k.classList.add('active');
+                        const k = document.querySelector(`.key[data-note="${detectedNote}"]`); if(k) k.classList.add('active');
                     }
                 }
             }
             if (!hasValidSignal) {
                 framesSinceLastSignal++;
-                if (framesSinceLastSignal < SIGNAL_HOLD_FRAMES) {
-                    cents = lastValidCents; isSignalActive = true; 
-                } else {
-                    isSignalActive = false; cents = null;
-                }
+                if (framesSinceLastSignal < SIGNAL_HOLD_FRAMES) { cents = lastValidCents; isSignalActive = true; } 
+                else { isSignalActive = false; cents = null; }
             }
             if (isRecording) processRecording(detectedNote, detectedOctave);
             pitchHistory.pop(); pitchHistory.unshift(cents);
@@ -659,29 +469,18 @@
         }
 
         function drawVisualizer() {
-            const w = canvas.parentElement.clientWidth;
-            const h = canvas.parentElement.clientHeight;
-            canvas.width = w; canvas.height = h;
+            const w = canvas.parentElement.clientWidth; const h = canvas.parentElement.clientHeight; canvas.width = w; canvas.height = h;
             const isLocked = isSignalActive && currentCents !== null && Math.abs(currentCents) <= 5;
             if (isLocked) {
-                ctx.fillStyle = "#66cc66"; ctx.fillRect(0, 0, w, h);
-                ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
+                ctx.fillStyle = "#66cc66"; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = "rgba(255,255,255,0.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
             } else {
-                const centerW = w * 0.15;
-                ctx.fillStyle = "#ff5252"; ctx.fillRect(0, 0, w/2 - centerW/2, h);
-                ctx.fillStyle = "#66cc66"; ctx.fillRect(w/2 - centerW/2, 0, centerW, h);
-                ctx.fillStyle = "#ff5252"; ctx.fillRect(w/2 + centerW/2, 0, w, h);
-                ctx.strokeStyle = "rgba(255,255,255,0.3)";
-                ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
+                const centerW = w * 0.15; ctx.fillStyle = "#ff5252"; ctx.fillRect(0, 0, w/2 - centerW/2, h); ctx.fillStyle = "#66cc66"; ctx.fillRect(w/2 - centerW/2, 0, centerW, h); ctx.fillStyle = "#ff5252"; ctx.fillRect(w/2 + centerW/2, 0, w, h); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.stroke();
             }
-            ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
-            ctx.beginPath();
+            ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath();
             const rowH = h / historySize; let lastX = null;
             for (let i = 0; i < historySize; i++) {
                 if (pitchHistory[i] !== null) {
-                    const val = Math.max(-50, Math.min(50, pitchHistory[i]));
-                    const x = (val + 50) / 100 * w; const y = i * rowH;
+                    const val = Math.max(-50, Math.min(50, pitchHistory[i])); const x = (val + 50) / 100 * w; const y = i * rowH;
                     if (lastX === null) ctx.moveTo(x, y); else if (Math.abs(x - lastX) < w * 0.8) ctx.lineTo(x, y); else ctx.moveTo(x, y);
                     lastX = x;
                 } else lastX = null;
@@ -689,19 +488,32 @@
             ctx.stroke();
         }
 
-        // Recorder & Player
+        // === RECORDER & PLAYBACK MANAGER (v6.1 Updated) ===
         let isRecording = false; let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
+        
         ui.recBtn.onclick = () => {
             isRecording = !isRecording;
             if (isRecording) {
                 recordedNotes = []; currentNoteEvent = null;
-                ui.recBtn.textContent = "■ STOP"; ui.recBtn.classList.add('recording'); ui.exportBtn.style.display = 'none';
+                // NEW: Visual feedback of note count
+                ui.recBtn.textContent = "● REC (0)"; ui.recBtn.classList.add('recording'); ui.exportBtn.style.display = 'none';
             } else {
                 if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime});
                 ui.recBtn.textContent = "● REC"; ui.recBtn.classList.remove('recording');
                 if(recordedNotes.length) ui.exportBtn.style.display = 'block';
             }
         };
+
+        function processRecording(n, o) {
+            const now = Date.now();
+            if(currentNoteEvent && n===currentNoteEvent.note && o===currentNoteEvent.octave) return;
+            if(currentNoteEvent) {
+                recordedNotes.push({...currentNoteEvent, duration: now-noteStartTime});
+                ui.recBtn.textContent = `● REC (${recordedNotes.length})`; // Update Count
+            }
+            if(n) { currentNoteEvent = {note:n, octave:o}; noteStartTime = now; } else currentNoteEvent = null;
+        }
+
         ui.exportBtn.onclick = () => {
             let x = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
             recordedNotes.forEach(n=>{
@@ -712,42 +524,87 @@
             const blob = new Blob([x], { type: 'text/xml' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `rec_${Date.now()}.musicxml`; a.click();
         };
+
+        // === NEW: Playback Manager ===
+        const playbackManager = {
+            timeouts: [],
+            isPlaying: false,
+            stop: function() {
+                this.timeouts.forEach(id => clearTimeout(id));
+                this.timeouts = [];
+                this.isPlaying = false;
+                // Reset UI
+                ui.importBtn.classList.remove('playing');
+                ui.importBtn.textContent = "▶ PLAY";
+                // Clear any lingering keys
+                document.querySelectorAll('.key.pressed').forEach(k => k.classList.remove('pressed'));
+            }
+        };
+
         const fileInput = document.getElementById('fileInput');
-        ui.importBtn.onclick = () => fileInput.click();
+        // Toggle Play/Stop logic
+        ui.importBtn.onclick = () => {
+            if (playbackManager.isPlaying) {
+                playbackManager.stop();
+            } else {
+                fileInput.click();
+            }
+        };
+
         fileInput.onchange = (e) => {
             const f = e.target.files[0]; if(!f)return;
             const r = new FileReader(); r.onload = (e) => playMusicXML(e.target.result); r.readAsText(f); fileInput.value = '';
         };
+
         function playMusicXML(xml) {
              if (audioCtx.state === 'suspended') audioCtx.resume();
              const parser = new DOMParser(); const doc = parser.parseFromString(xml, "text/xml");
              const notes = doc.querySelectorAll("note");
-             ui.importBtn.classList.add('playing'); ui.importBtn.textContent = "PLAYING...";
+             
+             // SET PLAYING STATE
+             playbackManager.isPlaying = true;
+             ui.importBtn.classList.add('playing'); 
+             ui.importBtn.textContent = "■ STOP";
+
              let ct = audioCtx.currentTime + 0.1;
+             
              notes.forEach(n => {
                 const s = n.querySelector("step")?.textContent; const o = n.querySelector("octave")?.textContent;
                 const a = n.querySelector("alter")?.textContent; const d = n.querySelector("duration")?.textContent;
                 if(d && s) {
                     const ds = parseFloat(d)/1000; let nn = s+(a==="1"?"#":"");
-                    // NEW FEATURE: A4 Calibration in Playback
                     const f = appSettings.a4 * Math.pow(2, ((parseInt(o)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
-                    const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                    osc.frequency.value = f; g.gain.setValueAtTime(0, ct); 
-                    g.gain.linearRampToValueAtTime(masterVolume * 0.3, ct+0.02); g.gain.linearRampToValueAtTime(0, ct+ds);
-                    osc.connect(g); g.connect(audioCtx.destination); osc.start(ct); osc.stop(ct+ds);
-                    setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.add('pressed'); }, (ct-audioCtx.currentTime)*1000);
-                    setTimeout(() => { document.querySelector(`.key[data-note="${nn}"]`)?.classList.remove('pressed'); }, (ct-audioCtx.currentTime)*1000 + ds*1000);
+                    
+                    // Schedule Tone
+                    const tId1 = setTimeout(() => {
+                        if(!playbackManager.isPlaying) return;
+                        const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                        osc.frequency.value = f; g.gain.setValueAtTime(0, audioCtx.currentTime); 
+                        g.gain.linearRampToValueAtTime(masterVolume * 0.3, audioCtx.currentTime+0.02); 
+                        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+ds);
+                        osc.connect(g); g.connect(audioCtx.destination); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+ds);
+                        
+                        document.querySelector(`.key[data-note="${nn}"]`)?.classList.add('pressed');
+                    }, (ct - audioCtx.currentTime) * 1000);
+
+                    // Schedule Cleanup
+                    const tId2 = setTimeout(() => {
+                        if(!playbackManager.isPlaying) return;
+                        document.querySelector(`.key[data-note="${nn}"]`)?.classList.remove('pressed');
+                    }, (ct - audioCtx.currentTime) * 1000 + ds * 1000);
+                    
+                    playbackManager.timeouts.push(tId1, tId2);
                     ct += ds;
                 }
              });
-             setTimeout(() => { ui.importBtn.classList.remove('playing'); ui.importBtn.textContent = "▶ PLAY"; }, (ct-audioCtx.currentTime)*1000);
+
+             // Schedule Finish
+             const finishId = setTimeout(() => {
+                 playbackManager.stop();
+             }, (ct - audioCtx.currentTime) * 1000);
+             playbackManager.timeouts.push(finishId);
         }
-        function processRecording(n, o) {
-            const now = Date.now();
-            if(currentNoteEvent && n===currentNoteEvent.note && o===currentNoteEvent.octave) return;
-            if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: now-noteStartTime});
-            if(n) { currentNoteEvent = {note:n, octave:o}; noteStartTime = now; } else currentNoteEvent = null;
-        }
+
     </script>
 </body>
 </html>
