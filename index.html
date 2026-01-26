@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v6.6 Polyphonic Sync</title>
+    <title>Web Tuner T1 - v7.5 Auto-Scroll Pilot</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.8/build/opensheetmusicdisplay.min.js"></script>
 
     <style>
         :root {
@@ -15,48 +16,78 @@
             --accent-red: #ff5252;
             --accent-blue: #2979ff;
             --accent-yellow: #ffd700;
+            --btn-bg: #222;
+            --panel-bg: #1a1a1a;
         }
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            background-color: var(--bg-color); color: var(--text-main);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
             user-select: none; -webkit-user-select: none; touch-action: manipulation;
         }
         
+        /* HEADER */
         header {
-            display: flex; justify-content: space-between; padding: 15px; align-items: center;
-            background: #000; z-index: 20;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; background: #000; z-index: 50; border-bottom: 1px solid #333;
+            height: 50px; flex-shrink: 0;
         }
-        .settings-btn { cursor: pointer; font-size: 1.5rem; }
-        .action-area { display: flex; gap: 8px; }
-        .btn {
-            border: 1px solid #555; background: transparent; color: #ccc;
-            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
-            display: flex; align-items: center; gap: 5px; font-weight: 600; min-width: 80px; justify-content: center;
-        }
-        .rec-btn.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); animation: pulse 2s infinite; }
-        .play-btn { color: var(--accent-blue); border-color: var(--accent-blue); }
-        .play-btn.playing { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-right { display: flex; align-items: center; gap: 6px; }
+        .title { font-weight: 900; letter-spacing: 1px; color: #fff; font-size: 1rem; }
+        .title span { color: var(--accent-green); }
 
-        .hidden-input { display: none; }
+        .icon-btn {
+            background: var(--btn-bg); border: 1px solid #444; color: #ccc;
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1.1rem; transition: all 0.2s;
+        }
+        .icon-btn:active { transform: scale(0.95); }
+        .icon-btn.active { background: var(--accent-yellow); color: #000; border-color: var(--accent-yellow); }
+        .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #btnRec.recording { background: var(--accent-red); color: white; border-color: var(--accent-red); animation: pulse 2s infinite; }
+        #btnPlay.playing { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+        #btnPlay.paused { background: var(--accent-blue); color: white; border-color: var(--accent-blue); animation: blink 1s infinite; }
+
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .hidden-input { display: none; }
 
+        /* READOUT */
         .readout {
             display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-            text-align: center; padding: 10px 0; background: #000; z-index: 20;
+            text-align: center; padding: 5px 0; background: #000; z-index: 40; height: 80px; flex-shrink: 0;
         }
-        .hz-val { font-size: 1.4rem; color: #888; font-family: monospace; }
+        .hz-val { font-size: 1.2rem; color: #888; font-family: monospace; }
         .hz-label { font-size: 0.6rem; color: #555; display: block; letter-spacing: 1px; }
-        .note-container { display: flex; align-items: baseline; justify-content: center; width: 140px;}
-        .note-display { font-size: 6rem; font-weight: 700; line-height: 1; color: #fff; }
-        .note-octave { font-size: 2.5rem; color: #aaa; margin-left: 5px;}
-        .cents-val { font-size: 1.4rem; color: #888; font-family: monospace; }
-        
+        .note-container { display: flex; align-items: baseline; justify-content: center; width: 120px;}
+        .note-display { font-size: 5rem; font-weight: 700; line-height: 1; color: #fff; }
+        .note-octave { font-size: 2rem; color: #aaa; margin-left: 5px;}
+        .cents-val { font-size: 1.2rem; color: #888; font-family: monospace; }
         .target-mode-active .note-display { color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
 
-        .viz-container { flex: 1; position: relative; background: #000; overflow: hidden; }
-        canvas { width: 100%; height: 100%; display: block; }
+        /* STAGE */
+        .main-stage { flex: 1; position: relative; background: #111; overflow: hidden; }
+        
+        #tunerCanvas { 
+            width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; 
+            z-index: 10; background: #000; transition: opacity 0.3s;
+        }
+        
+        #osmdContainer {
+            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
+            background: #fff; z-index: 5; 
+            overflow: auto; /* Enable scrolling */
+            padding-top: 10px; 
+            visibility: hidden; 
+            /* Smooth scrolling CSS support */
+            scroll-behavior: smooth;
+        }
+
+        .main-stage.sheet-mode #tunerCanvas { opacity: 0; pointer-events: none; z-index: 1; }
+        .main-stage.sheet-mode #osmdContainer { visibility: visible; z-index: 10; }
         
         .start-btn {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -64,51 +95,44 @@
             color: #000; font-weight: bold; border-radius: 40px; cursor: pointer;
             font-size: 1.2rem; z-index: 30; box-shadow: 0 0 20px rgba(102, 204, 102, 0.4);
         }
+        .main-stage.sheet-mode .start-btn { display: none !important; }
 
-        .keyboard-area { background: #000; padding: 10px 0; z-index: 20; border-top: 1px solid #222; }
-        
-        .octave-scroller {
-            display: flex; overflow-x: auto; white-space: nowrap; gap: 10px;
-            padding: 5px 15px 15px 15px; margin-bottom: 5px;
-            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        .zoom-controls {
+            position: absolute; bottom: 20px; right: 20px; 
+            display: none; flex-direction: column; gap: 10px; z-index: 50;
         }
-        .octave-scroller::-webkit-scrollbar { display: none; }
-
-        .pill { 
-            background: #222; color: #888; padding: 8px 18px; border-radius: 20px; 
-            font-size: 0.85rem; cursor: pointer; transition: all 0.2s; border: 1px solid #333;
-            flex-shrink: 0;
+        .main-stage.sheet-mode .zoom-controls { display: flex; }
+        .zoom-btn {
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.7);
+            color: white; border: none; font-size: 1.5rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
         }
-        .pill.active { background: #444; color: #fff; border-color: var(--accent-blue); font-weight: bold; box-shadow: 0 0 10px rgba(41, 121, 255, 0.3); }
 
-        .keys-wrapper { padding: 0 5px; }
-        .keys-row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
-        .key {
-            width: 40px; height: 55px; background: #222; border-radius: 0 0 4px 4px;
-            display: flex; align-items: flex-end; justify-content: center;
-            font-weight: bold; color: #fff; font-size: 1rem; padding-bottom: 5px;
-            cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent;
-        }
-        .key.sharp { 
-            background: #333; height: 35px; margin-bottom: 20px; 
-            border-radius: 0 0 4px 4px; z-index: 2; align-items: center; padding-bottom: 0;
-        }
-        .key.active { background: var(--accent-green) !important; color: #000 !important; transform: translateY(2px); box-shadow: 0 0 15px var(--accent-green); }
-        .key.pressed { background: var(--accent-blue) !important; color: #fff !important; transform: translateY(4px); box-shadow: 0 0 10px var(--accent-blue); }
+        /* KEYBOARD */
+        .keyboard-area { background: #000; padding: 10px 0; z-index: 40; border-top: 1px solid #222; flex-shrink: 0; }
+        .octave-scroller { display: flex; overflow-x: auto; white-space: nowrap; gap: 10px; padding: 5px 15px; scrollbar-width: none; }
+        .pill { background: #222; color: #888; padding: 8px 18px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; border: 1px solid #333; flex-shrink: 0; }
+        .pill.active { background: #444; color: #fff; border-color: var(--accent-blue); font-weight: bold; }
+        .keys-wrapper { padding: 5px; }
+        .keys-row { display: flex; justify-content: center; gap: 6px; }
+        .key { width: 40px; height: 55px; background: #222; border-radius: 0 0 4px 4px; display: flex; align-items: flex-end; justify-content: center; font-weight: bold; color: #fff; font-size: 1rem; padding-bottom: 5px; cursor: pointer; }
+        .key.sharp { background: #333; height: 35px; margin-bottom: 20px; border-radius: 0 0 4px 4px; padding-bottom: 0; align-items: center; }
+        .key.active { background: var(--accent-green); color: #000; transform: translateY(2px); }
+        .key.pressed { background: var(--accent-blue); color: #fff; transform: translateY(4px); }
+        footer { text-align: center; font-size: 0.7rem; color: #444; padding: 5px; background: #000; }
 
-        footer { text-align: center; font-size: 0.7rem; color: #444; padding: 8px; background: #000; }
-
+        /* MODALS */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; overflow-y: auto; }
-        .modal-content { max-width: 500px; margin: 40px auto; padding: 25px; background: #1a1a1a; border-radius: 12px; border: 1px solid #333; }
+        .modal-content { max-width: 500px; margin: 40px auto; padding: 25px; background: var(--panel-bg); border-radius: 12px; border: 1px solid #333; }
         .close-btn { float: right; font-size: 1.5rem; cursor: pointer; color: #888; }
+        
         .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
         .mode-card { background: #222; border: 2px solid #333; padding: 15px; cursor: pointer; border-radius: 8px; }
         .mode-card.selected { border-color: var(--accent-green); background: rgba(102, 204, 102, 0.1); }
-
+        
         .setting-group { margin-top: 25px; border-top: 1px solid #333; padding-top: 15px; }
         .setting-label { display: flex; justify-content: space-between; color: #ccc; margin-bottom: 5px; font-size: 0.9rem; }
-        .setting-val { color: var(--accent-blue); font-family: monospace; }
-        .slider-container { display: flex; align-items: center; gap: 15px; margin-top: 10px; }
+        .slider-container { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
         input[type=range] { flex: 1; height: 6px; background: #333; border-radius: 3px; outline: none; -webkit-appearance: none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: var(--accent-blue); border-radius: 50%; cursor: pointer; }
         
@@ -120,30 +144,35 @@
         input:checked + .slider:before { transform: translateX(20px); background: #000; }
         
         .preset-btn-group { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        .preset-btn { 
-            background: #222; border: 1px solid #444; color: #ccc; padding: 5px 12px; 
-            border-radius: 15px; cursor: pointer; font-size: 0.8rem; 
-        }
-        .preset-btn:hover { border-color: #888; }
-        
-        select.dark-select {
-            background: #222; color: #fff; border: 1px solid #444; padding: 8px; 
-            border-radius: 6px; width: 100%; margin-top: 10px;
-        }
-        select.dark-select:disabled { opacity: 0.5; cursor: not-allowed; }
+        .preset-btn { background: #222; border: 1px solid #444; color: #ccc; padding: 5px 12px; border-radius: 15px; cursor: pointer; font-size: 0.8rem; }
+        select.dark-select { background: #222; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 6px; width: 100%; margin-top: 10px; }
 
+        /* TEMPO MODAL STYLES */
+        .tempo-section { margin-bottom: 20px; }
+        .tempo-presets { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; justify-content: center;}
+        .tempo-btn { flex:1; background: #333; border: 1px solid #555; color: #fff; border-radius: 4px; padding: 5px; font-size: 0.8rem; cursor: pointer; min-width: 50px; }
+        .tempo-btn:hover { background: #444; }
+        .tempo-val-display { font-size: 1.2rem; font-weight: bold; color: var(--accent-yellow); font-family: monospace; }
+        .micro-btn { width: 30px; height: 30px; background: #444; border: none; color: white; border-radius: 50%; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body id="appBody">
 
     <header>
-        <div class="settings-btn" id="openSettings">⚙️</div>
-        <div style="font-weight:900; letter-spacing:1px; color:#fff;">TUNER <span style="color:var(--accent-green)">T1</span></div>
-        <div class="action-area">
-            <button class="btn rec-btn" id="recordBtn">● REC</button>
-            <button class="btn rec-btn" id="exportBtn" style="display:none; border-color:#fff; color:#fff;">⬇ XML</button>
+        <div class="header-left">
+            <button class="icon-btn" id="openSettings">⚙️</button>
+            <div class="title">TUNER <span>T1</span></div>
+        </div>
+        <div class="header-right">
+            <button class="icon-btn" id="btnTempo" title="Tempo Control" style="margin-right: 5px;">⏱️</button>
+            <button class="icon-btn" id="btnRec" title="Record">●</button>
+            <button class="icon-btn" id="btnExport" title="Save XML" style="display:none;">⬇</button>
+            <div style="width:1px; height:20px; background:#333; margin:0 5px;"></div>
+            <button class="icon-btn" id="btnLoad" title="Load MusicXML">📂</button>
+            <button class="icon-btn" id="btnView" title="Toggle View">👁️</button>
+            <button class="icon-btn" id="btnStop" title="Stop/Reset" disabled>■</button>
+            <button class="icon-btn" id="btnPlay" title="Play/Pause" disabled>▶</button>
             <input type="file" id="fileInput" class="hidden-input" accept="*">
-            <button class="btn play-btn" id="importBtn">▶ PLAY</button>
         </div>
     </header>
 
@@ -153,9 +182,14 @@
         <div><span id="cents" class="cents-val">0.0</span> <span class="hz-label">CENTS</span></div>
     </div>
 
-    <div class="viz-container">
-        <button class="start-btn" id="startBtn">⚡ 啟動 (Start)</button>
+    <div class="main-stage" id="mainStage">
         <canvas id="tunerCanvas"></canvas>
+        <div id="osmdContainer"></div>
+        <button class="start-btn" id="startBtn">⚡ 啟動 (Start)</button>
+        <div class="zoom-controls" id="zoomControls">
+            <button class="zoom-btn" onclick="zoomOSMD(1.2)">+</button>
+            <button class="zoom-btn" onclick="zoomOSMD(0.8)">-</button>
+        </div>
     </div>
 
     <div class="keyboard-area">
@@ -168,7 +202,6 @@
             <div class="pill" data-oct="6">+2 (C6)</div>
             <div class="pill" data-oct="7">+3 (C7)</div>
         </div>
-
         <div class="keys-wrapper">
             <div class="keys-row" style="margin-bottom: -20px; padding-left: 20px;">
                 <div class="key sharp" data-note="C#">C#</div><div class="key sharp" data-note="D#">D#</div>
@@ -182,7 +215,7 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v6.6 Polyphonic Sync</footer>
+    <footer>豐狂出品 • v7.5 Auto-Scroll Pilot</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -197,7 +230,7 @@
                 </div>
             </div>
             <div class="setting-group">
-                <div class="setting-label">🔊 發聲部音量 (Tone Volume) <span id="volValueDisplay" class="setting-val">150%</span></div>
+                <div class="setting-label">🔊 音量 (Vol) <span id="volValueDisplay" class="setting-val">150%</span></div>
                 <div class="slider-container">
                     <span style="font-size:1.2rem;">🔈</span>
                     <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5">
@@ -205,7 +238,7 @@
                 </div>
             </div>
             <div class="setting-group">
-                <div class="setting-label">🎹 A4 基準音 (Concert Pitch) <span id="a4Display" class="setting-val">440 Hz</span></div>
+                <div class="setting-label">🎹 A4 基準音 <span id="a4Display" class="setting-val">440 Hz</span></div>
                 <div class="slider-container">
                     <span style="color:#888; font-size:0.8rem;">430</span>
                     <input type="range" id="a4Slider" min="430" max="450" step="1" value="440">
@@ -213,35 +246,66 @@
                 </div>
             </div>
             <div class="setting-group">
-                <div class="setting-label">🎯 目標音鎖定 (Target Mode)</div>
+                <div class="setting-label">🎯 目標音鎖定</div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="targetModeToggle">
                     <div class="slider"></div>
-                    <span style="font-size:0.8rem; color:#ccc;">啟用鎖定 (Lock)</span>
+                    <span style="font-size:0.8rem; color:#ccc;">啟用鎖定</span>
                 </label>
                 <select id="targetNoteSelect" class="dark-select" disabled></select>
-                <div class="setting-label" style="margin-top:10px; font-size:0.8rem;">樂器 Preset (快速設定):</div>
-                <div class="preset-btn-group">
-                    <button class="preset-btn" onclick="applyPreset('guitar')">🎸 Guitar</button>
-                    <button class="preset-btn" onclick="applyPreset('bass')">🎸 Bass</button>
-                    <button class="preset-btn" onclick="applyPreset('ukulele')">Ukulele</button>
-                    <button class="preset-btn" onclick="applyPreset('violin')">Violin</button>
-                </div>
             </div>
             <div class="setting-group">
-                <div class="setting-label">🚪 噪音門檻 (Noise Gate) <span id="gateDisplay" class="setting-val">Low</span></div>
+                <div class="setting-label">🚪 噪音門檻 <span id="gateDisplay" class="setting-val">Low</span></div>
                 <div class="slider-container">
-                    <span style="font-size:0.8rem;">靈敏</span>
                     <input type="range" id="gateSlider" min="0.001" max="0.05" step="0.001" value="0.003">
-                    <span style="font-size:0.8rem;">抗噪</span>
                 </div>
             </div>
             <div class="setting-group">
-                <div class="setting-label">🌊 穩定度 (Stability) <span id="smoothDisplay" class="setting-val">Balanced</span></div>
+                <div class="setting-label">🌊 穩定度 <span id="smoothDisplay" class="setting-val">Balanced</span></div>
                 <div class="slider-container">
-                    <span style="font-size:0.8rem;">快速</span>
                     <input type="range" id="smoothSlider" min="0.1" max="0.9" step="0.1" value="0.3">
-                    <span style="font-size:0.8rem;">平滑</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tempoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeTempo">&times;</span>
+            <h2 style="color:var(--accent-yellow); margin-top:0;">⏱️ 速度 (Tempo)</h2>
+            <p style="color:#888; font-size:0.8rem; margin-bottom:20px;">原始速度 (Original): <span id="origBpmDisplay" style="color:#fff">120</span> BPM</p>
+
+            <div class="tempo-section">
+                <div class="setting-label">
+                    <span>A. 倍率 (Rate)</span>
+                    <span id="rateDisplay" class="tempo-val-display">1.00x</span>
+                </div>
+                <div class="tempo-presets">
+                    <button class="tempo-btn" onclick="setSpeed(0.5)">0.5x</button>
+                    <button class="tempo-btn" onclick="setSpeed(0.75)">0.75x</button>
+                    <button class="tempo-btn" onclick="setSpeed(1.0)">1.0x</button>
+                    <button class="tempo-btn" onclick="setSpeed(1.25)">1.25x</button>
+                    <button class="tempo-btn" onclick="setSpeed(1.5)">1.5x</button>
+                </div>
+                <div class="slider-container">
+                    <button class="micro-btn" onclick="adjustRate(-0.02)">-</button>
+                    <input type="range" id="rateSlider" min="0.2" max="2.0" step="0.01" value="1.0">
+                    <button class="micro-btn" onclick="adjustRate(0.02)">+</button>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+
+            <div class="tempo-section">
+                <div class="setting-label">
+                    <span>B. 節拍 (BPM)</span>
+                    <span id="bpmDisplay" class="tempo-val-display">120 BPM</span>
+                </div>
+                <div class="tempo-presets" id="bpmPresets"></div>
+                <div class="slider-container">
+                    <button class="micro-btn" onclick="adjustBPM(-2)">-</button>
+                    <input type="range" id="bpmSlider" min="20" max="240" step="1" value="120">
+                    <button class="micro-btn" onclick="adjustBPM(2)">+</button>
                 </div>
             </div>
         </div>
@@ -255,9 +319,16 @@
         let currentFFTSize = 2048; 
         let downsampleStep = 2;
         
-        const defaultSettings = {
-            a4: 440, gate: 0.003, smoothing: 0.3, targetMode: false, targetNoteIndex: 69 
-        };
+        let osmd = null;
+        let currentZoom = 1.0;
+        let isSheetMode = false;
+        let lastLoadedXML = null;
+
+        // TEMPO STATE
+        let originalBPM = 120;
+        let playbackSpeed = 1.0;
+
+        const defaultSettings = { a4: 440, gate: 0.003, smoothing: 0.3, targetMode: false, targetNoteIndex: 69 };
         let appSettings = { ...defaultSettings };
         const saved = localStorage.getItem('tuner_v6_settings');
         if (saved) { try { appSettings = { ...defaultSettings, ...JSON.parse(saved) }; } catch(e){} }
@@ -273,11 +344,23 @@
             oct: document.getElementById('octave'),
             cents: document.getElementById('cents'),
             keys: document.querySelectorAll('.key'),
-            recBtn: document.getElementById('recordBtn'),
-            exportBtn: document.getElementById('exportBtn'),
-            importBtn: document.getElementById('importBtn'),
+            
+            btnRec: document.getElementById('btnRec'),
+            btnExport: document.getElementById('btnExport'),
+            btnLoad: document.getElementById('btnLoad'),
+            btnView: document.getElementById('btnView'),
+            btnStop: document.getElementById('btnStop'),
+            btnPlay: document.getElementById('btnPlay'),
+            btnTempo: document.getElementById('btnTempo'),
+            fileInput: document.getElementById('fileInput'),
+
             startBtn: document.getElementById('startBtn'),
+            tunerCanvas: document.getElementById('tunerCanvas'),
+            osmdContainer: document.getElementById('osmdContainer'),
+            zoomControls: document.getElementById('zoomControls'),
+            mainStage: document.getElementById('mainStage'),
             octavePills: document.querySelectorAll('.pill[data-oct]'),
+            
             volSlider: document.getElementById('volSlider'),
             volDisplay: document.getElementById('volValueDisplay'),
             a4Slider: document.getElementById('a4Slider'),
@@ -288,7 +371,15 @@
             smoothDisplay: document.getElementById('smoothDisplay'),
             targetToggle: document.getElementById('targetModeToggle'),
             targetSelect: document.getElementById('targetNoteSelect'),
-            appBody: document.getElementById('appBody')
+            appBody: document.getElementById('appBody'),
+
+            // Tempo UI
+            origBpmDisplay: document.getElementById('origBpmDisplay'),
+            rateDisplay: document.getElementById('rateDisplay'),
+            rateSlider: document.getElementById('rateSlider'),
+            bpmDisplay: document.getElementById('bpmDisplay'),
+            bpmSlider: document.getElementById('bpmSlider'),
+            bpmPresets: document.getElementById('bpmPresets')
         };
         const canvas = document.getElementById('tunerCanvas');
         const ctx = canvas.getContext('2d', { alpha: false });
@@ -303,32 +394,158 @@
         const SIGNAL_HOLD_FRAMES = 12; 
         let smoothedCents = 0;
 
-        // === SETUP ===
+        // === TEMPO LOGIC ===
+        function updateTempoUI() {
+            const currentBPM = Math.round(originalBPM * playbackSpeed);
+            ui.rateSlider.value = playbackSpeed.toFixed(2);
+            ui.rateDisplay.textContent = playbackSpeed.toFixed(2) + "x";
+            ui.bpmSlider.min = Math.floor(originalBPM * 0.2);
+            ui.bpmSlider.max = Math.floor(originalBPM * 2.0);
+            ui.bpmSlider.value = currentBPM;
+            ui.bpmDisplay.textContent = currentBPM + " BPM";
+            ui.origBpmDisplay.textContent = originalBPM;
+        }
+
+        window.setSpeed = (rate) => {
+            playbackSpeed = rate; updateTempoUI();
+            if (playbackManager.isPlaying) playbackManager.play(lastLoadedXML);
+        };
+        window.setBPM = (targetBPM) => {
+            playbackSpeed = targetBPM / originalBPM; updateTempoUI();
+            if (playbackManager.isPlaying) playbackManager.play(lastLoadedXML);
+        };
+        ui.rateSlider.addEventListener('input', function() { playbackSpeed = parseFloat(this.value); updateTempoUI(); });
+        ui.rateSlider.addEventListener('change', () => { if(playbackManager.isPlaying) playbackManager.play(lastLoadedXML); });
+        ui.bpmSlider.addEventListener('input', function() { const target = parseInt(this.value); playbackSpeed = target / originalBPM; updateTempoUI(); });
+        ui.bpmSlider.addEventListener('change', () => { if(playbackManager.isPlaying) playbackManager.play(lastLoadedXML); });
+        window.adjustRate = (delta) => { let newRate = playbackSpeed + delta; if(newRate < 0.2) newRate = 0.2; if(newRate > 2.0) newRate = 2.0; setSpeed(newRate); };
+        window.adjustBPM = (delta) => { const current = Math.round(originalBPM * playbackSpeed); setBPM(current + delta); };
+
+        function setupBPMPresets() {
+            ui.bpmPresets.innerHTML = "";
+            [0.5, 0.75, 1.0, 1.25, 1.5].forEach(r => {
+                const b = Math.round(originalBPM * r);
+                const btn = document.createElement('button');
+                btn.className = "tempo-btn"; btn.textContent = b; btn.onclick = () => setBPM(b);
+                ui.bpmPresets.appendChild(btn);
+            });
+        }
+
+        const playbackManager = {
+            timeouts: [],
+            isPlaying: false,
+            isPaused: false,
+            play: function(xmlContent) {
+                if (this.isPaused) {
+                    audioCtx.resume(); this.isPaused = false; this.isPlaying = true;
+                    ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.remove('paused'); ui.btnPlay.classList.add('playing');
+                } else {
+                    if (!xmlContent) return;
+                    this.stop(); playMusicXML(xmlContent);
+                }
+            },
+            pause: function() {
+                if (this.isPlaying) {
+                    audioCtx.suspend(); this.isPlaying = false; this.isPaused = true;
+                    ui.btnPlay.textContent = "▶"; ui.btnPlay.classList.remove('playing'); ui.btnPlay.classList.add('paused');
+                }
+            },
+            stop: function() {
+                this.timeouts.forEach(id => clearTimeout(id)); this.timeouts = [];
+                this.isPlaying = false; this.isPaused = false; audioCtx.resume();
+                ui.btnPlay.textContent = "▶"; ui.btnPlay.classList.remove('playing', 'paused');
+                document.querySelectorAll('.key.pressed').forEach(k => k.classList.remove('pressed'));
+                if (osmd && osmd.cursor) { osmd.cursor.reset(); try { osmd.cursor.update(); } catch(e){} }
+            }
+        };
+
+        ui.btnLoad.onclick = () => ui.fileInput.click();
+        
+        ui.fileInput.onchange = async (e) => {
+            const f = e.target.files[0]; if(!f) return;
+            ui.btnLoad.style.color = "var(--accent-yellow)";
+            try {
+                let xmlContent = "";
+                if (f.name.toLowerCase().endsWith('.mxl')) {
+                    if (!window.JSZip) throw new Error("JSZip Missing");
+                    const zip = await JSZip.loadAsync(f);
+                    const container = await zip.file("META-INF/container.xml")?.async("string");
+                    let rootPath = "";
+                    if(container) {
+                        const doc = new DOMParser().parseFromString(container, "text/xml");
+                        rootPath = doc.querySelector("rootfile")?.getAttribute("full-path");
+                    }
+                    if(!rootPath) {
+                        for (let filename in zip.files) { if (filename.endsWith(".xml") && !filename.includes("META-INF")) { rootPath = filename; break; } }
+                    }
+                    if(rootPath && zip.file(rootPath)) { xmlContent = await zip.file(rootPath).async("string"); } else { throw new Error("XML not found in MXL"); }
+                } else {
+                    xmlContent = await new Promise(r => { const fr = new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsText(f); });
+                }
+                
+                lastLoadedXML = xmlContent;
+                const parser = new DOMParser(); const doc = parser.parseFromString(xmlContent, "text/xml");
+                let bpm = 120;
+                const perMinTag = doc.querySelector("per-minute");
+                if (perMinTag) bpm = parseFloat(perMinTag.textContent);
+                else { const soundTag = doc.querySelector("sound[tempo]"); if (soundTag) bpm = parseFloat(soundTag.getAttribute("tempo")); }
+                if (isNaN(bpm) || bpm <= 0) bpm = 120;
+                originalBPM = bpm; playbackSpeed = 1.0; setupBPMPresets(); updateTempoUI();
+                renderSheet(xmlContent);
+                ui.btnPlay.disabled = false; ui.btnStop.disabled = false; playbackManager.stop();
+            } catch(err) { alert("Load Failed: " + err.message); }
+            ui.fileInput.value = '';
+        };
+
+        ui.btnPlay.onclick = () => { if (audioCtx.state === 'suspended') audioCtx.resume(); if (playbackManager.isPlaying) { playbackManager.pause(); } else { playbackManager.play(lastLoadedXML); } };
+        ui.btnStop.onclick = () => { playbackManager.stop(); };
+
+        ui.btnView.onclick = () => {
+            isSheetMode = !isSheetMode;
+            if (isSheetMode) {
+                ui.btnView.classList.add('sheet-active'); ui.btnView.textContent = "🎼"; ui.mainStage.classList.add('sheet-mode');
+            } else {
+                ui.btnView.classList.remove('sheet-active'); ui.btnView.textContent = "👁️"; ui.mainStage.classList.remove('sheet-mode');
+                if (!isRunning) ui.startBtn.style.display = 'block';
+            }
+        };
+
+        let isRecording = false; let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
+        ui.btnRec.onclick = () => {
+            isRecording = !isRecording;
+            if (isRecording) { recordedNotes = []; currentNoteEvent = null; ui.btnRec.classList.add('recording'); ui.btnExport.style.display = 'none'; }
+            else { if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime}); ui.btnRec.classList.remove('recording'); if(recordedNotes.length) ui.btnExport.style.display = 'flex'; }
+        };
+        ui.btnExport.onclick = () => {
+            let x = `<?xml version="1.0"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
+            recordedNotes.forEach(n=>{ let s=n.note[0], a=n.note.includes('#'); x+=`<note><pitch><step>${s}</step>${a?'<alter>1</alter>':''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`; });
+            x+=`</measure></part></score-partwise>`;
+            const blob = new Blob([x], { type: 'text/xml' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `rec_${Date.now()}.musicxml`; a.click();
+        };
+
+        function renderSheet(xml) {
+            if (!opensheetmusicdisplay) return;
+            if (!osmd) { osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmdContainer", { autoResize: true, backend: "svg", drawTitle: false, drawingParameters: "compacttight" }); }
+            osmd.load(xml).then(function() { osmd.zoom = currentZoom; osmd.render(); if(osmd.cursor) osmd.cursor.show(); });
+        }
+        window.zoomOSMD = function(f) { if (!osmd) return; currentZoom *= f; osmd.zoom = currentZoom; osmd.render(); };
+
         function initTargetSelect() {
             ui.targetSelect.innerHTML = "";
             for (let i = 24; i <= 107; i++) { 
-                const noteName = notes[i % 12];
-                const oct = Math.floor(i / 12) - 1;
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.text = `${noteName}${oct}`;
-                ui.targetSelect.appendChild(opt);
+                const noteName = notes[i % 12]; const oct = Math.floor(i / 12) - 1;
+                const opt = document.createElement('option'); opt.value = i; opt.text = `${noteName}${oct}`; ui.targetSelect.appendChild(opt);
             }
         }
         initTargetSelect();
-
+        
         function applyUI() {
-            ui.a4Slider.value = appSettings.a4;
-            ui.a4Display.innerText = appSettings.a4 + " Hz";
-            ui.gateSlider.value = appSettings.gate;
-            ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1);
-            ui.smoothSlider.value = appSettings.smoothing;
-            ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%";
-            ui.targetToggle.checked = appSettings.targetMode;
-            ui.targetSelect.disabled = !appSettings.targetMode;
+            ui.a4Slider.value = appSettings.a4; ui.a4Display.innerText = appSettings.a4 + " Hz";
+            ui.gateSlider.value = appSettings.gate; ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1);
+            ui.smoothSlider.value = appSettings.smoothing; ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%";
+            ui.targetToggle.checked = appSettings.targetMode; ui.targetSelect.disabled = !appSettings.targetMode;
             ui.targetSelect.value = appSettings.targetNoteIndex;
-            if (appSettings.targetMode) ui.appBody.classList.add('target-mode-active');
-            else ui.appBody.classList.remove('target-mode-active');
+            if(appSettings.targetMode) ui.appBody.classList.add('target-mode-active'); else ui.appBody.classList.remove('target-mode-active');
         }
         applyUI();
 
@@ -337,13 +554,13 @@
         ui.smoothSlider.addEventListener('input', function() { appSettings.smoothing = parseFloat(this.value); ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%"; saveSettings(); });
         ui.targetToggle.addEventListener('change', function() { appSettings.targetMode = this.checked; ui.targetSelect.disabled = !this.checked; if (this.checked) ui.appBody.classList.add('target-mode-active'); else ui.appBody.classList.remove('target-mode-active'); saveSettings(); });
         ui.targetSelect.addEventListener('change', function() { appSettings.targetNoteIndex = parseInt(this.value); saveSettings(); });
-        window.applyPreset = (inst) => {
-            let startNote = 69; 
-            if (inst === 'guitar') startNote = 40; if (inst === 'bass') startNote = 28; 
-            if (inst === 'ukulele') startNote = 69; if (inst === 'violin') startNote = 69; 
-            appSettings.targetNoteIndex = startNote; appSettings.targetMode = true; 
-            ui.targetToggle.checked = true; applyUI(); saveSettings();
-        };
+        
+        const settingsModal = document.getElementById('settingsModal');
+        const tempoModal = document.getElementById('tempoModal');
+        document.getElementById('openSettings').onclick = () => settingsModal.style.display = 'block';
+        document.getElementById('closeSettings').onclick = () => settingsModal.style.display = 'none';
+        ui.btnTempo.onclick = () => tempoModal.style.display = 'block';
+        document.getElementById('closeTempo').onclick = () => tempoModal.style.display = 'none';
 
         ui.startBtn.onclick = async function() {
             this.style.display = 'none';
@@ -357,133 +574,136 @@
             } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
 
-        function stopMic() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            isRunning = false;
-            ui.startBtn.style.display = 'block'; 
-            ui.startBtn.innerText = "⚡ 重新啟動 (Resume)";
-        }
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) { stopMic(); playbackManager.stop(); }
-        });
+        function playMusicXML(xmlString) {
+             const parser = new DOMParser(); const doc = parser.parseFromString(xmlString, "text/xml");
+             if (doc.querySelector("parsererror")) { alert("XML Parsing Error"); ui.btnPlay.textContent = "▶"; return; }
 
-        ui.octavePills.forEach(pill => {
-            pill.addEventListener('click', function() {
-                ui.octavePills.forEach(p => p.classList.remove('active')); this.classList.add('active');
-                keyboardOctave = parseInt(this.getAttribute('data-oct'));
-                this.scrollIntoView({behavior: "smooth", block: "nearest", inline: "center"});
-            });
-        });
-        ui.volSlider.addEventListener('input', function() {
-            masterVolume = parseFloat(this.value); ui.volDisplay.textContent = Math.round(masterVolume * 100) + "%";
-            if (toneGain) toneGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.1);
-        });
+             let divisions = 480;
+             const divTag = doc.querySelector("divisions");
+             if (divTag) { const val = parseFloat(divTag.textContent); if (!isNaN(val) && val > 0) divisions = val; }
 
-        function startTone(noteName) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const semitones = notes.indexOf(noteName); const noteNum = (keyboardOctave + 1) * 12 + semitones;
-            const freq = appSettings.a4 * Math.pow(2, (noteNum - 69) / 12);
-            if (toneOsc) stopTone();
-            toneOsc = audioCtx.createOscillator(); toneGain = audioCtx.createGain();
-            toneOsc.type = 'sine'; toneOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            toneGain.gain.setValueAtTime(0, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.05);
-            toneGain.connect(audioCtx.destination); if (analyser) toneGain.connect(analyser); 
-            toneOsc.connect(toneGain); toneOsc.start();
-        }
-        function stopTone() {
-            if (toneOsc && toneGain) {
-                const stopTime = audioCtx.currentTime + 0.1;
-                toneGain.gain.cancelScheduledValues(audioCtx.currentTime); toneGain.gain.setValueAtTime(toneGain.gain.value, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(0, stopTime);
-                toneOsc.stop(stopTime);
-                const oldOsc = toneOsc; const oldGain = toneGain; setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200); toneOsc = null; toneGain = null;
-            }
-        }
-        ui.keys.forEach(key => {
-            const note = key.getAttribute('data-note');
-            const press = (e) => { e.preventDefault(); key.classList.add('pressed'); startTone(note); };
-            const release = (e) => { e.preventDefault(); key.classList.remove('pressed'); stopTone(); };
-            key.addEventListener('mousedown', press); key.addEventListener('mouseup', release); key.addEventListener('mouseleave', release); key.addEventListener('touchstart', press); key.addEventListener('touchend', release);
-        });
+             let bpm = originalBPM; 
+             const effectiveBPM = bpm * playbackSpeed;
+             const isLegacy = (divisions === 1000 && !doc.querySelector("per-minute") && !doc.querySelector("sound"));
 
-        window.setMode = (mode) => {
-            if (mode === 'turbo') { currentFFTSize = 2048; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card selected'; document.getElementById('modeBass').className = 'mode-card'; }
-            else { currentFFTSize = 4096; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card'; document.getElementById('modeBass').className = 'mode-card selected'; }
-            if (analyser) { analyser.fftSize = currentFFTSize; dataArray = new Float32Array(analyser.fftSize); }
-        };
-        const modal = document.getElementById('settingsModal');
-        document.getElementById('openSettings').onclick = () => modal.style.display = 'block';
-        document.getElementById('closeSettings').onclick = () => modal.style.display = 'none';
+             playbackManager.isPlaying = true; ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.add('playing');
+             if (isSheetMode && osmd) { osmd.cursor.reset(); osmd.cursor.show(); }
 
-        function detectPitch(buffer, sampleRate) {
-            const threshold = 0.15; const halfSize = Math.floor(buffer.length / 2); const yinBuffer = new Float32Array(halfSize);
-            for (let t = 0; t < halfSize; t++) {
-                let sum = 0;
-                for (let i = 0; i < halfSize; i += downsampleStep) { const d = buffer[i] - buffer[i + t]; sum += d * d; }
-                yinBuffer[t] = sum;
-            }
-            yinBuffer[0] = 1; let runningSum = 0;
-            for (let t = 1; t < halfSize; t++) { runningSum += yinBuffer[t]; yinBuffer[t] *= t / runningSum; }
-            let tau = -1;
-            for (let t = 2; t < halfSize; t++) {
-                if (yinBuffer[t] < threshold) { while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++; tau = t; break; }
-            }
-            if (tau === -1) return -1;
-            const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
-            return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
+             const parts = doc.querySelectorAll("part");
+             let maxGlobalTime = 0;
+             const startTimeRef = audioCtx.currentTime + 0.1;
+
+             parts.forEach((part, partIndex) => { // Added partIndex for Cursor Control
+                 let currentTime = 0;
+                 part.querySelectorAll("measure").forEach(measure => {
+                     const children = Array.from(measure.childNodes).filter(n => n.nodeType === 1);
+                     let measureCursor = 0;
+                     children.forEach(node => {
+                         if (node.tagName === "note") {
+                             const isRest = node.querySelector("rest") !== null;
+                             const isChord = node.querySelector("chord") !== null;
+                             const durNode = node.querySelector("duration");
+                             let durationSec = 0.05;
+                             if(durNode) {
+                                 let d = parseFloat(durNode.textContent);
+                                 if(isLegacy) durationSec = (d/1000) / playbackSpeed; else durationSec = (d/divisions)*(60/effectiveBPM);
+                             }
+                             if(durationSec<0.05) durationSec=0.05;
+
+                             let noteStart = currentTime + measureCursor;
+                             if (isChord) noteStart = window.lastNoteStart || noteStart; 
+                             else { window.lastNoteStart = noteStart; measureCursor += durationSec; }
+
+                             // [NEW] AUTO-SCROLLING & CURSOR SYNC
+                             // Only Part 1 drives the cursor/scroll to avoid jitter from multiple parts
+                             if (!isChord && !isRest && partIndex === 0) {
+                                 const cursorId = setTimeout(() => {
+                                     if (playbackManager.isPlaying && osmd && osmd.cursor) {
+                                         try { 
+                                             osmd.cursor.next(); 
+                                             // AUTO-SCROLL: Keep cursor centered
+                                             if (isSheetMode) osmd.cursor.cursorElement.scrollIntoView({behavior: "smooth", block: "center"});
+                                         } catch(e){}
+                                     }
+                                 }, (startTimeRef + noteStart - audioCtx.currentTime) * 1000);
+                                 playbackManager.timeouts.push(cursorId);
+                             }
+
+                             if (!isRest) {
+                                 const step = node.querySelector("step")?.textContent; const oct = node.querySelector("octave")?.textContent; const alt = node.querySelector("alter")?.textContent;
+                                 if (step && oct) {
+                                     let nn = step + (alt==="1"?"#":"");
+                                     if(alt==="-1") { const map={"D":"C#","E":"D#","G":"F#","A":"G#","B":"A#"}; if(map[step]) nn=map[step]; }
+                                     const f = appSettings.a4 * Math.pow(2, ((parseInt(oct)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
+                                     const t1 = setTimeout(() => {
+                                         if(!playbackManager.isPlaying) return;
+                                         const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                                         osc.frequency.value = f; g.gain.setValueAtTime(0, audioCtx.currentTime);
+                                         g.gain.linearRampToValueAtTime(masterVolume*0.3, audioCtx.currentTime+0.02);
+                                         g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+durationSec);
+                                         osc.connect(g); g.connect(audioCtx.destination); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+durationSec);
+                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.add('pressed');
+                                     }, (startTimeRef + noteStart - audioCtx.currentTime) * 1000);
+                                     const t2 = setTimeout(() => {
+                                         if(!playbackManager.isPlaying) return;
+                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.remove('pressed');
+                                     }, (startTimeRef + noteStart + durationSec - audioCtx.currentTime) * 1000);
+                                     playbackManager.timeouts.push(t1, t2);
+                                 }
+                             }
+                             maxGlobalTime = Math.max(maxGlobalTime, noteStart + durationSec);
+                         } 
+                         else if (node.tagName === "backup") {
+                             const d = parseFloat(node.querySelector("duration")?.textContent||0);
+                             measureCursor -= (d/divisions)*(60/effectiveBPM);
+                         }
+                         else if (node.tagName === "forward") {
+                             const d = parseFloat(node.querySelector("duration")?.textContent||0);
+                             measureCursor += (d/divisions)*(60/effectiveBPM);
+                         }
+                     });
+                     currentTime += Math.max(measureCursor, 0); 
+                 });
+             });
+             const finishId = setTimeout(() => { playbackManager.stop(); }, (startTimeRef + maxGlobalTime - audioCtx.currentTime) * 1000 + 500);
+             playbackManager.timeouts.push(finishId);
         }
 
         function update() {
-            if (!isRunning) return;
-            if (!analyser) return; 
-            analyser.getFloatTimeDomainData(dataArray);
-            let sum = 0; for (let i = 0; i < dataArray.length; i+=4) sum += dataArray[i] * dataArray[i];
-            const rms = Math.sqrt(sum / (dataArray.length/4));
-
-            let cents = null; let detectedNote = null; let detectedOctave = null; let hasValidSignal = false;
-
-            if (rms > appSettings.gate) {
-                const pitch = detectPitch(dataArray, audioCtx.sampleRate);
-                const minFreq = currentFFTSize === 4096 ? 25 : 50;
-
-                if (pitch !== -1 && pitch > minFreq && pitch < 4200) {
-                    hasValidSignal = true;
-                    const A4 = appSettings.a4;
-                    const noteNumFloat = 12 * (Math.log(pitch / A4) / Math.log(2));
-                    let roundedNote = Math.round(noteNumFloat) + 69;
-                    if (appSettings.targetMode) roundedNote = appSettings.targetNoteIndex;
-                    
-                    detectedNote = notes[roundedNote % 12]; detectedOctave = Math.floor(roundedNote / 12) - 1;
-                    const freqFromNote = A4 * Math.pow(2, (roundedNote - 69) / 12);
-                    const rawCents = Math.floor(1200 * Math.log(pitch / freqFromNote) / Math.log(2));
-                    smoothedCents = (smoothedCents * appSettings.smoothing) + (rawCents * (1 - appSettings.smoothing));
-                    cents = smoothedCents;
-
-                    lastValidCents = cents; framesSinceLastSignal = 0; currentCents = cents; isSignalActive = true;
-                    ui.hz.textContent = pitch.toFixed(1); ui.cents.textContent = (cents > 0 ? "+" : "") + cents.toFixed(0);
-                    
-                    if (lastNoteName !== detectedNote + detectedOctave) {
-                        ui.note.textContent = detectedNote; ui.oct.textContent = detectedOctave;
-                        lastNoteName = detectedNote + detectedOctave;
-                        ui.keys.forEach(k => k.classList.remove('active'));
-                        const k = document.querySelector(`.key[data-note="${detectedNote}"]`); if(k) k.classList.add('active');
+            if(!isRunning) return; analyser.getFloatTimeDomainData(dataArray);
+            let sum=0; for(let i=0;i<dataArray.length;i+=4) sum+=dataArray[i]*dataArray[i];
+            const rms = Math.sqrt(sum/(dataArray.length/4));
+            let cents = null; let hasSignal = false;
+            if(rms > appSettings.gate) {
+                const p = detectPitch(dataArray, audioCtx.sampleRate);
+                if(p!==-1 && p>25 && p<4200) {
+                    hasSignal = true;
+                    const noteFloat = 12 * (Math.log(p/appSettings.a4)/Math.log(2));
+                    let rNote = Math.round(noteFloat)+69;
+                    if(appSettings.targetMode) rNote = appSettings.targetNoteIndex;
+                    const dNote = notes[rNote%12]; const dOct = Math.floor(rNote/12)-1;
+                    const fNote = appSettings.a4 * Math.pow(2, (rNote-69)/12);
+                    const rCents = Math.floor(1200 * Math.log(p/fNote)/Math.log(2));
+                    smoothedCents = (smoothedCents*appSettings.smoothing) + (rCents*(1-appSettings.smoothing));
+                    cents = smoothedCents; lastValidCents = cents; framesSinceLastSignal = 0; currentCents = cents; isSignalActive = true;
+                    ui.hz.textContent = p.toFixed(1); ui.cents.textContent = (cents>0?"+":"")+cents.toFixed(0);
+                    if(lastNoteName !== dNote+dOct) {
+                        ui.note.textContent = dNote; ui.oct.textContent = dOct; lastNoteName = dNote+dOct;
+                        ui.keys.forEach(k=>k.classList.remove('active'));
+                        const k=document.querySelector(`.key[data-note="${dNote}"]`); if(k) k.classList.add('active');
                     }
                 }
             }
-            if (!hasValidSignal) {
-                framesSinceLastSignal++;
-                if (framesSinceLastSignal < SIGNAL_HOLD_FRAMES) { cents = lastValidCents; isSignalActive = true; } 
-                else { isSignalActive = false; cents = null; }
+            if(!hasSignal) {
+                framesSinceLastSignal++; if(framesSinceLastSignal<SIGNAL_HOLD_FRAMES) { cents = lastValidCents; isSignalActive = true; } else { isSignalActive = false; cents = null; }
             }
-            if (isRecording) processRecording(detectedNote, detectedOctave);
+            if(isRecording) processRecording(notes[Math.round(12*(Math.log(440/440)/Math.log(2))+69)%12], 4);
             pitchHistory.pop(); pitchHistory.unshift(cents);
-            drawVisualizer();
-            requestAnimationFrame(update);
+            drawVisualizer(); requestAnimationFrame(update);
         }
 
         function drawVisualizer() {
+            if (isSheetMode) return;
             const w = canvas.parentElement.clientWidth; const h = canvas.parentElement.clientHeight; canvas.width = w; canvas.height = h;
             const isLocked = isSignalActive && currentCents !== null && Math.abs(currentCents) <= 5;
             if (isLocked) {
@@ -503,274 +723,38 @@
             ctx.stroke();
         }
 
-        let isRecording = false; let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
+        function detectPitch(buffer, sampleRate) {
+            const threshold = 0.15; const halfSize = Math.floor(buffer.length / 2); const yinBuffer = new Float32Array(halfSize);
+            for (let t = 0; t < halfSize; t++) { let sum = 0; for (let i = 0; i < halfSize; i += downsampleStep) { const d = buffer[i] - buffer[i + t]; sum += d * d; } yinBuffer[t] = sum; }
+            yinBuffer[0] = 1; let runningSum = 0; for (let t = 1; t < halfSize; t++) { runningSum += yinBuffer[t]; yinBuffer[t] *= t / runningSum; }
+            let tau = -1; for (let t = 2; t < halfSize; t++) { if (yinBuffer[t] < threshold) { while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++; tau = t; break; } }
+            if (tau === -1) return -1; const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
+            return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
+        }
         
-        ui.recBtn.onclick = () => {
-            isRecording = !isRecording;
-            if (isRecording) {
-                recordedNotes = []; currentNoteEvent = null;
-                ui.recBtn.textContent = "● REC (0)"; ui.recBtn.classList.add('recording'); ui.exportBtn.style.display = 'none';
-            } else {
-                if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime});
-                ui.recBtn.textContent = "● REC"; ui.recBtn.classList.remove('recording');
-                if(recordedNotes.length) ui.exportBtn.style.display = 'block';
+        window.setMode = (mode) => { if (mode === 'turbo') { currentFFTSize = 2048; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card selected'; document.getElementById('modeBass').className = 'mode-card'; } else { currentFFTSize = 4096; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card'; document.getElementById('modeBass').className = 'mode-card selected'; } if (analyser) { analyser.fftSize = currentFFTSize; dataArray = new Float32Array(analyser.fftSize); } };
+        window.applyPreset = (inst) => { let startNote = 69; if (inst === 'guitar') startNote = 40; if (inst === 'bass') startNote = 28; if (inst === 'ukulele') startNote = 69; if (inst === 'violin') startNote = 69; appSettings.targetNoteIndex = startNote; appSettings.targetMode = true; ui.targetToggle.checked = true; applyUI(); saveSettings(); };
+        
+        ui.keys.forEach(key => {
+            const note = key.getAttribute('data-note');
+            const press = (e) => { e.preventDefault(); key.classList.add('pressed'); startTone(note); };
+            const release = (e) => { e.preventDefault(); key.classList.remove('pressed'); stopTone(); };
+            key.addEventListener('mousedown', press); key.addEventListener('mouseup', release); key.addEventListener('mouseleave', release); key.addEventListener('touchstart', press); key.addEventListener('touchend', release);
+        });
+        
+        ui.volSlider.addEventListener('input', function() { masterVolume = parseFloat(this.value); ui.volDisplay.textContent = Math.round(masterVolume * 100) + "%"; if (toneGain) toneGain.gain.setTargetAtTime(masterVolume, audioCtx.currentTime, 0.1); });
+        
+        function startTone(noteName) { if (audioCtx.state === 'suspended') audioCtx.resume(); const semitones = notes.indexOf(noteName); const noteNum = (keyboardOctave + 1) * 12 + semitones; const freq = appSettings.a4 * Math.pow(2, (noteNum - 69) / 12); if (toneOsc) stopTone(); toneOsc = audioCtx.createOscillator(); toneGain = audioCtx.createGain(); toneOsc.type = 'sine'; toneOsc.frequency.setValueAtTime(freq, audioCtx.currentTime); toneGain.gain.setValueAtTime(0, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(masterVolume, audioCtx.currentTime + 0.05); toneGain.connect(audioCtx.destination); if (analyser) toneGain.connect(analyser); toneOsc.connect(toneGain); toneOsc.start(); }
+        function stopTone() { if (toneOsc && toneGain) { const stopTime = audioCtx.currentTime + 0.1; toneGain.gain.cancelScheduledValues(audioCtx.currentTime); toneGain.gain.setValueAtTime(toneGain.gain.value, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(0, stopTime); toneOsc.stop(stopTime); const oldOsc = toneOsc; const oldGain = toneGain; setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200); toneOsc = null; toneGain = null; } }
+        function stopMic() { 
+            if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; } 
+            isRunning = false;
+            if (!isSheetMode) {
+                ui.startBtn.style.display = 'block'; 
+                ui.startBtn.innerText = "⚡ 重新啟動 (Resume)"; 
             }
-        };
-
-        function processRecording(n, o) {
-            const now = Date.now();
-            if(currentNoteEvent && n===currentNoteEvent.note && o===currentNoteEvent.octave) return;
-            if(currentNoteEvent) {
-                recordedNotes.push({...currentNoteEvent, duration: now-noteStartTime});
-                ui.recBtn.textContent = `● REC (${recordedNotes.length})`;
-            }
-            if(n) { currentNoteEvent = {note:n, octave:o}; noteStartTime = now; } else currentNoteEvent = null;
         }
-
-        ui.exportBtn.onclick = () => {
-            let x = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
-            recordedNotes.forEach(n=>{
-                let s=n.note[0], a=n.note.includes('#');
-                x+=`<note><pitch><step>${s}</step>${a?'<alter>1</alter>':''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`;
-            });
-            x+=`</measure></part></score-partwise>`;
-            const blob = new Blob([x], { type: 'text/xml' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `rec_${Date.now()}.musicxml`; a.click();
-        };
-
-        const playbackManager = {
-            timeouts: [],
-            isPlaying: false,
-            stop: function() {
-                this.timeouts.forEach(id => clearTimeout(id));
-                this.timeouts = [];
-                this.isPlaying = false;
-                ui.importBtn.classList.remove('playing');
-                ui.importBtn.textContent = "▶ PLAY";
-                document.querySelectorAll('.key.pressed').forEach(k => k.classList.remove('pressed'));
-            }
-        };
-
-        const fileInput = document.getElementById('fileInput');
-        ui.importBtn.onclick = async () => {
-            if (audioCtx.state === 'suspended') await audioCtx.resume();
-            if (playbackManager.isPlaying) { playbackManager.stop(); } else { fileInput.click(); }
-        };
-
-        fileInput.onchange = async (e) => {
-            const f = e.target.files[0]; if(!f) return;
-            ui.importBtn.textContent = "⏳ LOADING...";
-            
-            try {
-                let xmlContent = "";
-                if (f.name.toLowerCase().endsWith('.mxl')) {
-                    if (!window.JSZip) throw new Error("JSZip not loaded");
-                    const zip = await JSZip.loadAsync(f);
-                    const containerFile = zip.file("META-INF/container.xml");
-                    let rootPath = "";
-                    if (containerFile) {
-                        const containerText = await containerFile.async("string");
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(containerText, "text/xml");
-                        const rootfile = doc.querySelector("rootfile");
-                        if (rootfile) rootPath = rootfile.getAttribute("full-path");
-                    }
-                    let scoreFile = rootPath ? zip.file(rootPath) : null;
-                    if (!scoreFile) {
-                        const files = Object.keys(zip.files);
-                        const candidate = files.find(name => name.toLowerCase().endsWith(".xml") && !name.includes("META-INF") && !name.startsWith("."));
-                        if (candidate) scoreFile = zip.file(candidate);
-                    }
-                    if (scoreFile) { xmlContent = await scoreFile.async("string"); } 
-                    else { throw new Error("No MusicXML found in .mxl"); }
-                } else {
-                    xmlContent = await new Promise((resolve, reject) => {
-                        const r = new FileReader();
-                        r.onload = e => resolve(e.target.result);
-                        r.onerror = e => reject(e);
-                        r.readAsText(f);
-                    });
-                }
-                playMusicXML(xmlContent);
-            } catch(err) { alert("Import Failed: " + err.message); ui.importBtn.textContent = "▶ PLAY"; }
-            fileInput.value = '';
-        };
-
-        // === v6.6 Polyphonic Sync Player ===
-        function playMusicXML(xmlString) {
-             const parser = new DOMParser(); const doc = parser.parseFromString(xmlString, "text/xml");
-             
-             if (doc.querySelector("parsererror")) { alert("XML Parsing Error"); ui.importBtn.textContent = "▶ PLAY"; return; }
-
-             let divisions = 480;
-             const divTag = doc.querySelector("divisions");
-             if (divTag) { const val = parseFloat(divTag.textContent); if (!isNaN(val) && val > 0) divisions = val; }
-
-             let bpm = 120;
-             const perMinTag = doc.querySelector("per-minute");
-             if (perMinTag) { bpm = parseFloat(perMinTag.textContent); } 
-             else {
-                const soundTag = doc.querySelector("sound[tempo]");
-                if (soundTag) bpm = parseFloat(soundTag.getAttribute("tempo"));
-             }
-             if (isNaN(bpm) || bpm <= 0) bpm = 120;
-
-             // Check Legacy Mode
-             const isLegacy = (divisions === 1000 && !doc.querySelector("per-minute") && !doc.querySelector("sound"));
-
-             playbackManager.isPlaying = true;
-             ui.importBtn.classList.add('playing'); 
-             ui.importBtn.textContent = "■ STOP";
-
-             const parts = doc.querySelectorAll("part");
-             let maxGlobalTime = 0;
-             const startTimeRef = audioCtx.currentTime + 0.1;
-
-             parts.forEach(part => {
-                 let currentTime = 0;
-                 const measures = part.querySelectorAll("measure");
-                 
-                 measures.forEach(measure => {
-                     // Get all relevant children (notes, backup, forward) in order
-                     const children = Array.from(measure.childNodes).filter(n => n.nodeType === 1);
-                     let measureCursor = 0;
-
-                     children.forEach(node => {
-                         if (node.tagName === "note") {
-                             // Handle Note/Rest/Chord
-                             const isRest = node.querySelector("rest") !== null;
-                             const isChord = node.querySelector("chord") !== null;
-                             const isGrace = node.querySelector("grace") !== null;
-                             const durNode = node.querySelector("duration");
-                             
-                             if (isGrace) return;
-
-                             let durVal = durNode ? parseFloat(durNode.textContent) : 0;
-                             let durationSec = 0;
-                             
-                             if (isLegacy) durationSec = durVal / 1000;
-                             else durationSec = (durVal / divisions) * (60 / bpm);
-                             
-                             if (durationSec < 0.05) durationSec = 0.05; // clamp
-
-                             let noteStart = currentTime + measureCursor;
-                             
-                             // Chord logic: rewind cursor to start of previous note?
-                             // Standard MusicXML: Chord tags follow the note they attach to.
-                             // We don't advance cursor if it is a chord? 
-                             // Wait, simpler:
-                             // If NOT chord, we schedule, then ADVANCE.
-                             // If CHORD, we schedule at CURRENT cursor (which was advanced by prev note).
-                             // Actually, MusicXML says: Backup moves cursor back. Chord means "same start time as prev note".
-                             // My previous logic: chord uses 'lastNoteStart'.
-                             
-                             // Let's implement BACKUP/FORWARD logic strictly.
-                             // But 'chord' tag is special sugar.
-                             
-                             // Correct Logic:
-                             // If chord, use `lastNoteStart` (which we need to track).
-                             // If not chord, update `lastNoteStart` = current (measureCursor + currentTime).
-                             
-                             // WAIT! If I use BACKUP, I don't need chord logic usually.
-                             // But piano scores use both.
-                             
-                             // Let's keep it simple:
-                             // If CHORD: Start Time = `lastNoteStart`. Do NOT advance cursor?
-                             // NO. Chord notes usually have duration too.
-                             // Example: C (4), E (chord, 4).
-                             // 1. C: start=0. Advance +4.
-                             // 2. E (chord): start=0. Advance +4? No, cursor is at 4.
-                             // So if chord, we must calculate start time as `cursor - duration`? No that assumes same duration.
-                             
-                             // Standard practice:
-                             // If !Chord: play at T. T += Dur.
-                             // If Chord: play at T_prev. (Do not change T).
-                             
-                             // Let's use `stepTime`.
-                             // Non-chord: play at T. T += Dur. Store `prevT = T_start`.
-                             // Chord: play at `prevT`.
-                             
-                             // But wait, backup/forward changes T too.
-                             
-                             if (isChord) {
-                                 noteStart = window.lastNoteStart || noteStart; 
-                                 // Don't advance cursor for chord?
-                                 // Actually, MusicXML spec says chord duration doesn't advance music time.
-                             } else {
-                                 window.lastNoteStart = noteStart;
-                                 measureCursor += durationSec; // Advance!
-                             }
-
-                             // Schedule Sound if not rest
-                             if (!isRest) {
-                                 const step = node.querySelector("step")?.textContent;
-                                 const oct = node.querySelector("octave")?.textContent;
-                                 const alt = node.querySelector("alter")?.textContent;
-                                 
-                                 if (step && oct) {
-                                     let nn = step + (alt==="1"?"#":"");
-                                     if(alt==="-1") { const map={"D":"C#","E":"D#","G":"F#","A":"G#","B":"A#"}; if(map[step]) nn=map[step]; }
-                                     
-                                     const f = appSettings.a4 * Math.pow(2, ((parseInt(oct)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
-                                     
-                                     const t1 = setTimeout(() => {
-                                         if(!playbackManager.isPlaying) return;
-                                         const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                                         osc.frequency.value = f; g.gain.setValueAtTime(0, audioCtx.currentTime);
-                                         g.gain.linearRampToValueAtTime(masterVolume*0.3, audioCtx.currentTime+0.02);
-                                         g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+durationSec);
-                                         osc.connect(g); g.connect(audioCtx.destination); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+durationSec);
-                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.add('pressed');
-                                     }, (startTimeRef + noteStart - audioCtx.currentTime) * 1000);
-                                     
-                                     const t2 = setTimeout(() => {
-                                         if(!playbackManager.isPlaying) return;
-                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.remove('pressed');
-                                     }, (startTimeRef + noteStart + durationSec - audioCtx.currentTime) * 1000);
-                                     
-                                     playbackManager.timeouts.push(t1, t2);
-                                 }
-                             }
-                             
-                             maxGlobalTime = Math.max(maxGlobalTime, noteStart + durationSec);
-                         } 
-                         else if (node.tagName === "backup") {
-                             const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
-                             const sec = (dur / divisions) * (60 / bpm);
-                             measureCursor -= sec;
-                         }
-                         else if (node.tagName === "forward") {
-                             const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
-                             const sec = (dur / divisions) * (60 / bpm);
-                             measureCursor += sec;
-                         }
-                     });
-                     
-                     // End of measure, cursor implicitly advances? 
-                     // No, MusicXML is continuous.
-                     // But we processed `measureCursor` relatively. 
-                     // We need to advance `currentTime` by the length of the measure?
-                     // Actually, usually `measureCursor` ends at the measure duration.
-                     // So we add the final cursor position to `currentTime`.
-                     // BUT, if there was a backup, cursor might be 0.
-                     // We should track the "max time reached" in this measure?
-                     // Standard: Attributes like `time signature` dictate measure length, but here we just flow.
-                     // Heuristic: Advance `currentTime` by the max cursor position reached?
-                     // Or just assume `measureCursor` is at end?
-                     // If voice 2 ends later?
-                     
-                     // Robust: Measure duration is usually fixed.
-                     // But simplest: `currentTime += measureCursor` (assuming last note ended at measure end)
-                     // Let's use `measureCursor`. If backup happened, it might be wrong.
-                     // Better: Scan measure for max duration? Too complex.
-                     // Let's trust that the XML ends the measure with the cursor at the end.
-                     currentTime += Math.max(measureCursor, 0); 
-                 });
-             });
-
-             const finishId = setTimeout(() => { playbackManager.stop(); }, (startTimeRef + maxGlobalTime - audioCtx.currentTime) * 1000 + 500);
-             playbackManager.timeouts.push(finishId);
-        }
+        document.addEventListener('visibilitychange', () => { if (document.hidden) { stopMic(); playbackManager.pause(); } });
 
     </script>
 </body>
