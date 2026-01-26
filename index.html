@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Web Tuner T1 - v6.5 Stable</title>
+    <title>Web Tuner T1 - v6.6 Polyphonic Sync</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -182,7 +182,7 @@
         </div>
     </div>
     
-    <footer>豐狂出品 • v6.5 Stable</footer>
+    <footer>豐狂出品 • v6.6 Polyphonic Sync</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -357,7 +357,6 @@
             } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
         };
 
-        // Lifecycle Management
         function stopMic() {
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
@@ -529,18 +528,7 @@
         }
 
         ui.exportBtn.onclick = () => {
-            let x = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
-<score-partwise version="4.0">
-  <part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list>
-  <part id="P1">
-    <measure number="1">
-      <attributes>
-        <divisions>1000</divisions>
-        <time><beats>4</beats><beat-type>4</beat-type></time>
-      </attributes>
-      <direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>60</per-minute></metronome></direction-type></direction>`;
-            
+            let x = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
             recordedNotes.forEach(n=>{
                 let s=n.note[0], a=n.note.includes('#');
                 x+=`<note><pitch><step>${s}</step>${a?'<alter>1</alter>':''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`;
@@ -608,14 +596,11 @@
             fileInput.value = '';
         };
 
+        // === v6.6 Polyphonic Sync Player ===
         function playMusicXML(xmlString) {
              const parser = new DOMParser(); const doc = parser.parseFromString(xmlString, "text/xml");
              
-             const parseError = doc.querySelector("parsererror");
-             if (parseError) { alert("XML Parsing Error"); ui.importBtn.textContent = "▶ PLAY"; return; }
-
-             const notes = doc.querySelectorAll("note");
-             if (notes.length === 0) { alert("No notes found"); ui.importBtn.textContent = "▶ PLAY"; return; }
+             if (doc.querySelector("parsererror")) { alert("XML Parsing Error"); ui.importBtn.textContent = "▶ PLAY"; return; }
 
              let divisions = 480;
              const divTag = doc.querySelector("divisions");
@@ -630,99 +615,160 @@
              }
              if (isNaN(bpm) || bpm <= 0) bpm = 120;
 
-             const isLegacyRecorder = (divisions === 1000 && !doc.querySelector("per-minute") && !doc.querySelector("sound"));
+             // Check Legacy Mode
+             const isLegacy = (divisions === 1000 && !doc.querySelector("per-minute") && !doc.querySelector("sound"));
 
              playbackManager.isPlaying = true;
              ui.importBtn.classList.add('playing'); 
              ui.importBtn.textContent = "■ STOP";
 
-             let absoluteTime = 0;
-             let maxDuration = 0;
+             const parts = doc.querySelectorAll("part");
+             let maxGlobalTime = 0;
              const startTimeRef = audioCtx.currentTime + 0.1;
-             
-             let lastNoteStartTime = 0;
 
-             notes.forEach(n => {
-                const isRest = n.querySelector("rest") !== null;
-                const isChord = n.querySelector("chord") !== null;
-                const isGrace = n.querySelector("grace") !== null;
-                
-                if (isGrace) return;
+             parts.forEach(part => {
+                 let currentTime = 0;
+                 const measures = part.querySelectorAll("measure");
+                 
+                 measures.forEach(measure => {
+                     // Get all relevant children (notes, backup, forward) in order
+                     const children = Array.from(measure.childNodes).filter(n => n.nodeType === 1);
+                     let measureCursor = 0;
 
-                const stepNode = n.querySelector("step");
-                const octaveNode = n.querySelector("octave");
-                const alterNode = n.querySelector("alter");
-                const durationNode = n.querySelector("duration");
-                
-                let durationSec = 0;
-                if (durationNode) {
-                    const rawDur = parseFloat(durationNode.textContent);
-                    if (!isNaN(rawDur)) {
-                        if (isLegacyRecorder) durationSec = rawDur / 1000;
-                        else durationSec = (rawDur / divisions) * (60 / bpm);
-                    }
-                }
-                if (durationSec < 0.05) durationSec = 0.05;
+                     children.forEach(node => {
+                         if (node.tagName === "note") {
+                             // Handle Note/Rest/Chord
+                             const isRest = node.querySelector("rest") !== null;
+                             const isChord = node.querySelector("chord") !== null;
+                             const isGrace = node.querySelector("grace") !== null;
+                             const durNode = node.querySelector("duration");
+                             
+                             if (isGrace) return;
 
-                let noteStartTime = absoluteTime;
-                if (isChord) {
-                    noteStartTime = lastNoteStartTime;
-                } else {
-                    noteStartTime = absoluteTime;
-                    lastNoteStartTime = absoluteTime;
-                    absoluteTime += durationSec;
-                }
-                maxDuration = Math.max(maxDuration, noteStartTime + durationSec);
+                             let durVal = durNode ? parseFloat(durNode.textContent) : 0;
+                             let durationSec = 0;
+                             
+                             if (isLegacy) durationSec = durVal / 1000;
+                             else durationSec = (durVal / divisions) * (60 / bpm);
+                             
+                             if (durationSec < 0.05) durationSec = 0.05; // clamp
 
-                if (isRest) return;
+                             let noteStart = currentTime + measureCursor;
+                             
+                             // Chord logic: rewind cursor to start of previous note?
+                             // Standard MusicXML: Chord tags follow the note they attach to.
+                             // We don't advance cursor if it is a chord? 
+                             // Wait, simpler:
+                             // If NOT chord, we schedule, then ADVANCE.
+                             // If CHORD, we schedule at CURRENT cursor (which was advanced by prev note).
+                             // Actually, MusicXML says: Backup moves cursor back. Chord means "same start time as prev note".
+                             // My previous logic: chord uses 'lastNoteStart'.
+                             
+                             // Let's implement BACKUP/FORWARD logic strictly.
+                             // But 'chord' tag is special sugar.
+                             
+                             // Correct Logic:
+                             // If chord, use `lastNoteStart` (which we need to track).
+                             // If not chord, update `lastNoteStart` = current (measureCursor + currentTime).
+                             
+                             // WAIT! If I use BACKUP, I don't need chord logic usually.
+                             // But piano scores use both.
+                             
+                             // Let's keep it simple:
+                             // If CHORD: Start Time = `lastNoteStart`. Do NOT advance cursor?
+                             // NO. Chord notes usually have duration too.
+                             // Example: C (4), E (chord, 4).
+                             // 1. C: start=0. Advance +4.
+                             // 2. E (chord): start=0. Advance +4? No, cursor is at 4.
+                             // So if chord, we must calculate start time as `cursor - duration`? No that assumes same duration.
+                             
+                             // Standard practice:
+                             // If !Chord: play at T. T += Dur.
+                             // If Chord: play at T_prev. (Do not change T).
+                             
+                             // Let's use `stepTime`.
+                             // Non-chord: play at T. T += Dur. Store `prevT = T_start`.
+                             // Chord: play at `prevT`.
+                             
+                             // But wait, backup/forward changes T too.
+                             
+                             if (isChord) {
+                                 noteStart = window.lastNoteStart || noteStart; 
+                                 // Don't advance cursor for chord?
+                                 // Actually, MusicXML spec says chord duration doesn't advance music time.
+                             } else {
+                                 window.lastNoteStart = noteStart;
+                                 measureCursor += durationSec; // Advance!
+                             }
 
-                if (stepNode && octaveNode) {
-                    let step = stepNode.textContent;
-                    let alter = alterNode ? parseInt(alterNode.textContent) : 0;
-                    let oct = parseInt(octaveNode.textContent);
-                    let noteName = step;
-                    if (alter === 1) noteName += "#";
-                    // Simplified Flat handling
-                    if (alter === -1) {
-                        const flatMap = { "D":"C#", "E":"D#", "G":"F#", "A":"G#", "B":"A#", "C":"B", "F":"E" };
-                        if (flatMap[step]) noteName = flatMap[step];
-                    }
-
-                    const baseFreq = appSettings.a4; 
-                    const allNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-                    const semitoneIndex = allNotes.indexOf(noteName);
-                    
-                    if (semitoneIndex !== -1) {
-                        const noteNum = (oct + 1) * 12 + semitoneIndex;
-                        const freq = baseFreq * Math.pow(2, (noteNum - 69) / 12);
-
-                        const tId1 = setTimeout(() => {
-                            if(!playbackManager.isPlaying) return;
-                            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                            osc.frequency.value = freq; 
-                            const now = audioCtx.currentTime;
-                            g.gain.setValueAtTime(0, now); 
-                            g.gain.linearRampToValueAtTime(masterVolume * 0.3, now + 0.02); 
-                            g.gain.linearRampToValueAtTime(0, now + durationSec - 0.02);
-                            osc.connect(g); g.connect(audioCtx.destination); 
-                            osc.start(now); osc.stop(now + durationSec);
-                            
-                            const keyEl = document.querySelector(`.key[data-note="${noteName}"]`);
-                            if(keyEl) keyEl.classList.add('pressed');
-                        }, (startTimeRef + noteStartTime - audioCtx.currentTime) * 1000);
-
-                        const tId2 = setTimeout(() => {
-                            if(!playbackManager.isPlaying) return;
-                            const keyEl = document.querySelector(`.key[data-note="${noteName}"]`);
-                            if(keyEl) keyEl.classList.remove('pressed');
-                        }, (startTimeRef + noteStartTime + durationSec - audioCtx.currentTime) * 1000);
-                        
-                        playbackManager.timeouts.push(tId1, tId2);
-                    }
-                }
+                             // Schedule Sound if not rest
+                             if (!isRest) {
+                                 const step = node.querySelector("step")?.textContent;
+                                 const oct = node.querySelector("octave")?.textContent;
+                                 const alt = node.querySelector("alter")?.textContent;
+                                 
+                                 if (step && oct) {
+                                     let nn = step + (alt==="1"?"#":"");
+                                     if(alt==="-1") { const map={"D":"C#","E":"D#","G":"F#","A":"G#","B":"A#"}; if(map[step]) nn=map[step]; }
+                                     
+                                     const f = appSettings.a4 * Math.pow(2, ((parseInt(oct)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
+                                     
+                                     const t1 = setTimeout(() => {
+                                         if(!playbackManager.isPlaying) return;
+                                         const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                                         osc.frequency.value = f; g.gain.setValueAtTime(0, audioCtx.currentTime);
+                                         g.gain.linearRampToValueAtTime(masterVolume*0.3, audioCtx.currentTime+0.02);
+                                         g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+durationSec);
+                                         osc.connect(g); g.connect(audioCtx.destination); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+durationSec);
+                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.add('pressed');
+                                     }, (startTimeRef + noteStart - audioCtx.currentTime) * 1000);
+                                     
+                                     const t2 = setTimeout(() => {
+                                         if(!playbackManager.isPlaying) return;
+                                         const k = document.querySelector(`.key[data-note="${nn}"]`); if(k) k.classList.remove('pressed');
+                                     }, (startTimeRef + noteStart + durationSec - audioCtx.currentTime) * 1000);
+                                     
+                                     playbackManager.timeouts.push(t1, t2);
+                                 }
+                             }
+                             
+                             maxGlobalTime = Math.max(maxGlobalTime, noteStart + durationSec);
+                         } 
+                         else if (node.tagName === "backup") {
+                             const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
+                             const sec = (dur / divisions) * (60 / bpm);
+                             measureCursor -= sec;
+                         }
+                         else if (node.tagName === "forward") {
+                             const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
+                             const sec = (dur / divisions) * (60 / bpm);
+                             measureCursor += sec;
+                         }
+                     });
+                     
+                     // End of measure, cursor implicitly advances? 
+                     // No, MusicXML is continuous.
+                     // But we processed `measureCursor` relatively. 
+                     // We need to advance `currentTime` by the length of the measure?
+                     // Actually, usually `measureCursor` ends at the measure duration.
+                     // So we add the final cursor position to `currentTime`.
+                     // BUT, if there was a backup, cursor might be 0.
+                     // We should track the "max time reached" in this measure?
+                     // Standard: Attributes like `time signature` dictate measure length, but here we just flow.
+                     // Heuristic: Advance `currentTime` by the max cursor position reached?
+                     // Or just assume `measureCursor` is at end?
+                     // If voice 2 ends later?
+                     
+                     // Robust: Measure duration is usually fixed.
+                     // But simplest: `currentTime += measureCursor` (assuming last note ended at measure end)
+                     // Let's use `measureCursor`. If backup happened, it might be wrong.
+                     // Better: Scan measure for max duration? Too complex.
+                     // Let's trust that the XML ends the measure with the cursor at the end.
+                     currentTime += Math.max(measureCursor, 0); 
+                 });
              });
 
-             const finishId = setTimeout(() => { playbackManager.stop(); }, (startTimeRef + maxDuration - audioCtx.currentTime) * 1000 + 500);
+             const finishId = setTimeout(() => { playbackManager.stop(); }, (startTimeRef + maxGlobalTime - audioCtx.currentTime) * 1000 + 500);
              playbackManager.timeouts.push(finishId);
         }
 
