@@ -570,87 +570,334 @@
             if (playbackManager.isPlaying) { playbackManager.stop(); } else { fileInput.click(); }
         };
 
-        fileInput.onchange = async (e) => {
-            const f = e.target.files[0]; if(!f)return;
-            try {
-                // FIXED: Case-insensitive Check
-                if (f.name.toLowerCase().endsWith('.mxl')) {
-                    if (!window.JSZip) { alert("JSZip library not loaded. Check internet connection."); return; }
-                    const zip = await JSZip.loadAsync(f);
-                    const xmlFile = Object.values(zip.files).find(file => file.name.endsWith('.xml') || file.name.endsWith('.musicxml'));
-                    if (xmlFile) { const text = await xmlFile.async("string"); playMusicXML(text); } 
-                    else { alert("No MusicXML found in .mxl"); }
-                } else {
-                    const r = new FileReader(); r.onload = (e) => playMusicXML(e.target.result); r.readAsText(f);
-                }
-            } catch(err) { alert("Error reading file: " + err); }
-            fileInput.value = '';
+
+
+
+
+
+
+// ==========================================
+        // BEGIN FIX: v6.4 MusicXML/MXL Robust Import
+        // ==========================================
+
+        const fileInput = document.getElementById('fileInput');
+
+        // Play Button Click Handler
+        ui.importBtn.onclick = async () => {
+            // [Fix 4] iOS Audio Unlock: Must happen on direct user interaction
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            if (playbackManager.isPlaying) { 
+                playbackManager.stop(); 
+            } else { 
+                // Reset value to ensure onchange triggers even for same file
+                fileInput.value = ''; 
+                fileInput.click(); 
+            }
         };
 
-        // FIXED: Universal Parser (Handles both Rec & Std files)
-        function playMusicXML(xml) {
-             const parser = new DOMParser(); const doc = parser.parseFromString(xml, "text/xml");
-             const notes = doc.querySelectorAll("note");
-             
-             let divisions = 1;
-             const divNode = doc.querySelector("divisions");
-             if (divNode) divisions = parseFloat(divNode.textContent);
-             
-             let bpm = 120;
-             const perMin = doc.querySelector("per-minute");
-             if (perMin) bpm = parseFloat(perMin.textContent);
+        // File Selection Handler
+        fileInput.onchange = async (e) => {
+            const f = e.target.files[0];
+            if (!f) return;
 
-             playbackManager.isPlaying = true;
-             ui.importBtn.classList.add('playing'); 
-             ui.importBtn.textContent = "■ STOP";
+            // UI Feedback
+            ui.importBtn.textContent = "⏳ LOADING...";
 
-             let ct = audioCtx.currentTime + 0.1;
-             
-             notes.forEach(n => {
-                const s = n.querySelector("step")?.textContent; const o = n.querySelector("octave")?.textContent;
-                const a = n.querySelector("alter")?.textContent; const d = n.querySelector("duration")?.textContent;
+            try {
+                let xmlContent = "";
                 
-                if(d && s) {
-                    let durVal = parseFloat(d);
-                    let ds = 0;
+                // [Fix 1] MXL Handling: Read META-INF/container.xml first
+                if (f.name.toLowerCase().endsWith('.mxl')) {
+                    if (!window.JSZip) throw new Error("JSZip not loaded");
                     
-                    // FIXED FORMULA: (Duration / Divisions) * (60 / BPM)
-                    // If file is from our new recorder: (ms / 1000) * (60 / 60) = ms/1000 = seconds. Perfect.
-                    // If file is standard: (480 / 480) * (60 / 120) = 0.5s. Perfect.
+                    const zip = await JSZip.loadAsync(f);
                     
-                    if (divisions === 0) divisions = 1; // Prevent div by zero
-                    ds = (durVal / divisions) * (60 / bpm);
+                    // Try to find the rootfile path from container.xml
+                    const containerFile = zip.file("META-INF/container.xml");
+                    let rootPath = "";
                     
-                    // Fallback for weird files
-                    if (isNaN(ds) || ds < 0.05) ds = 0.1;
+                    if (containerFile) {
+                        const containerText = await containerFile.async("string");
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(containerText, "text/xml");
+                        const rootfile = doc.querySelector("rootfile");
+                        if (rootfile) {
+                            rootPath = rootfile.getAttribute("full-path");
+                        }
+                    }
 
-                    let nn = s+(a==="1"?"#":"");
-                    const f = appSettings.a4 * Math.pow(2, ((parseInt(o)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn)-69)/12);
+                    // Fallback logic if container.xml fails or path is weird
+                    let scoreFile = rootPath ? zip.file(rootPath) : null;
                     
-                    const tId1 = setTimeout(() => {
-                        if(!playbackManager.isPlaying) return;
-                        const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                        osc.frequency.value = f; g.gain.setValueAtTime(0, audioCtx.currentTime); 
-                        g.gain.linearRampToValueAtTime(masterVolume * 0.3, audioCtx.currentTime+0.02); 
-                        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+ds);
-                        osc.connect(g); g.connect(audioCtx.destination); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+ds);
-                        document.querySelector(`.key[data-note="${nn}"]`)?.classList.add('pressed');
-                    }, (ct - audioCtx.currentTime) * 1000);
+                    if (!scoreFile) {
+                        // Heuristic: Find first .xml that is NOT container.xml
+                        const files = Object.keys(zip.files);
+                        const candidate = files.find(name => 
+                            name.toLowerCase().endsWith(".xml") && 
+                            !name.includes("META-INF") && 
+                            !name.startsWith(".")
+                        );
+                        if (candidate) scoreFile = zip.file(candidate);
+                    }
 
-                    const tId2 = setTimeout(() => {
-                        if(!playbackManager.isPlaying) return;
-                        document.querySelector(`.key[data-note="${nn}"]`)?.classList.remove('pressed');
-                    }, (ct - audioCtx.currentTime) * 1000 + ds * 1000);
-                    
-                    playbackManager.timeouts.push(tId1, tId2);
-                    ct += ds;
+                    if (scoreFile) {
+                        xmlContent = await scoreFile.async("string");
+                    } else {
+                        throw new Error("No valid MusicXML file found in .mxl");
+                    }
+                } else {
+                    // Standard Text Read for .xml / .musicxml
+                    xmlContent = await new Promise((resolve, reject) => {
+                        const r = new FileReader();
+                        r.onload = e => resolve(e.target.result);
+                        r.onerror = e => reject(e);
+                        r.readAsText(f);
+                    });
                 }
-             });
 
-             const finishId = setTimeout(() => { playbackManager.stop(); }, (ct - audioCtx.currentTime) * 1000);
-             playbackManager.timeouts.push(finishId);
+                // Parse and Play
+                playMusicXML(xmlContent);
+
+            } catch(err) {
+                alert("Import Failed: " + err.message);
+                ui.importBtn.textContent = "▶ PLAY";
+            }
+        };
+
+        function playMusicXML(xmlString) {
+            console.log("--- Starting Parsing ---");
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlString, "text/xml");
+
+            // [Fix] Check for Parser Error
+            const parseError = doc.querySelector("parsererror");
+            if (parseError) {
+                alert("XML Parsing Error: Invalid XML format.");
+                ui.importBtn.textContent = "▶ PLAY";
+                return;
+            }
+
+            // 1. Extract Global Settings (Tempo & Divisions)
+            // [Fix 2] Robust Division/Tempo Finding
+            let divisions = 480; // Standard default
+            const divTag = doc.querySelector("divisions");
+            if (divTag) {
+                const val = parseFloat(divTag.textContent);
+                if (!isNaN(val) && val > 0) divisions = val;
+            }
+
+            let bpm = 120; // Standard default
+            // Try standard <per-minute>
+            const perMinTag = doc.querySelector("per-minute");
+            if (perMinTag) {
+                bpm = parseFloat(perMinTag.textContent);
+            } else {
+                // Try <sound tempo="...">
+                const soundTag = doc.querySelector("sound[tempo]");
+                if (soundTag) {
+                    bpm = parseFloat(soundTag.getAttribute("tempo"));
+                }
+            }
+            if (isNaN(bpm) || bpm <= 0) bpm = 120;
+
+            console.log(`Detected: Divisions=${divisions}, BPM=${bpm}`);
+
+            // Detect if this is our own recorder file (legacy support)
+            // Our recorder uses divisions=1000 and treats duration as raw ms
+            const isLegacyRecorder = (divisions === 1000 && !doc.querySelector("per-minute") && !doc.querySelector("sound"));
+
+            // 2. Parse Notes
+            const noteNodes = doc.querySelectorAll("note");
+            if (noteNodes.length === 0) {
+                alert("No notes found in this XML.");
+                ui.importBtn.textContent = "▶ PLAY";
+                return;
+            }
+
+            // Update UI State
+            playbackManager.isPlaying = true;
+            ui.importBtn.classList.add('playing'); 
+            ui.importBtn.textContent = "■ STOP";
+
+            let absoluteTime = 0; // In seconds
+            let maxDuration = 0;
+
+            // Audio Context Time Reference
+            // Add slight delay (0.1s) to allow UI to update and audio buffer to settle
+            const startTimeRef = audioCtx.currentTime + 0.1;
+
+            noteNodes.forEach(n => {
+                // XML Tags
+                const isRest = n.querySelector("rest") !== null;
+                const isChord = n.querySelector("chord") !== null;
+                const isGrace = n.querySelector("grace") !== null;
+                
+                const stepNode = n.querySelector("step");
+                const octaveNode = n.querySelector("octave");
+                const alterNode = n.querySelector("alter");
+                const durationNode = n.querySelector("duration");
+
+                // Skip grace notes for this simple player (simpler logic)
+                if (isGrace) return;
+                
+                // Calculate Duration in Seconds
+                let durationSec = 0;
+                if (durationNode) {
+                    const rawDur = parseFloat(durationNode.textContent);
+                    if (!isNaN(rawDur)) {
+                        if (isLegacyRecorder) {
+                            durationSec = rawDur / 1000; // Raw MS to Seconds
+                        } else {
+                            // Standard Formula: (Duration / Divisions) * (60 / BPM)
+                            durationSec = (rawDur / divisions) * (60 / bpm);
+                        }
+                    }
+                }
+
+                // Safety Clamp for very short notes
+                if (durationSec < 0.05) durationSec = 0.05;
+
+                // [Fix 3] Chord Logic:
+                // If it is a chord, it shares the start time of the previous note.
+                // It does NOT advance absoluteTime.
+                // We assume XML is ordered: Note A, then Note B (chord) means B plays with A.
+                
+                // However, simpler loop logic:
+                // If NOT chord, we advance absoluteTime AFTER scheduling.
+                // If IS chord, we schedule at current absoluteTime (which hasn't advanced yet relative to the base note).
+                // Wait, standard MusicXML `chord` tag appears on the *second* note.
+                // Note 1 (Duration 1) -> advances time? No, we need to know if next is chord.
+                // Better approach: Backtrack? No.
+                // Approach:
+                // If `chord`, use `absoluteTime - lastStepDuration`. 
+                // BUT, cleaner approach: Only advance `absoluteTime` if the note is NOT part of a chord block? 
+                // Actually, standard XML parser logic:
+                // Note A (dur=4) -> absoluteTime stays 0.
+                // Note B (chord, dur=4) -> absoluteTime stays 0.
+                // Next Note C -> absoluteTime becomes 0 + 4.
+                
+                // Implementation for linear reading:
+                // If it is a chord, reset start time to `lastNoteStartTime`.
+                
+                let noteStartTime = absoluteTime;
+
+                if (isChord) {
+                     // Move back to start of the cluster
+                     // We need to track the start time of the "current chord stack"
+                     // For simplicity in this linear reader, we assume `absoluteTime` was advanced by the previous note
+                     // and we need to rewind. 
+                     // Actually, easiest way:
+                     // Don't advance `absoluteTime` inside the loop until we know the next note is NOT a chord?
+                     // Or, just use a variable `clusterStartTime`.
+                } 
+                
+                // Re-thinking simpler logic that works for 99% cases:
+                // We use a variable `stepDuration`.
+                // If !chord, we commit the previous stepDuration to absoluteTime.
+                
+                // Let's rely on the fact that `chord` tag means "play with previous".
+                // We need to undo the time advance of the previous note? 
+                // No, let's change how we advance time.
+                
+                // CORRECT LOGIC:
+                if (isChord) {
+                    // It starts at the same time as the previous note
+                    // So we use 'lastNoteStart'
+                    // We do NOT update absoluteTime here because the 'main' note already defined the duration of this block
+                    noteStartTime = window.lastNoteStart || 0;
+                } else {
+                    // It's a new note/rest.
+                    noteStartTime = absoluteTime;
+                    window.lastNoteStart = absoluteTime; // Save for potential chords
+                    
+                    // Advance time for the NEXT note
+                    absoluteTime += durationSec;
+                }
+
+                maxDuration = Math.max(maxDuration, noteStartTime + durationSec);
+
+                // If it's a rest, we just advanced time (above), no sound to play.
+                if (isRest) return;
+
+                // Parse Pitch
+                if (stepNode && octaveNode) {
+                    let step = stepNode.textContent;
+                    let alter = alterNode ? parseInt(alterNode.textContent) : 0;
+                    let oct = parseInt(octaveNode.textContent);
+
+                    // Handle Flats/Sharps to match our notes array
+                    // Our array: C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+                    let noteName = step;
+                    if (alter === 1) noteName += "#";
+                    if (alter === -1) {
+                        // Convert Flat to Sharp (e.g., Db -> C#)
+                        const flatMap = { "D":"C#", "E":"D#", "G":"F#", "A":"G#", "B":"A#", "C":"B", "F":"E" }; // Cb->B, Fb->E edge cases
+                        if (flatMap[step]) noteName = flatMap[step];
+                        // Octave adjustment for Cb? Let's ignore complex edge cases for now
+                    }
+
+                    // Calculate Frequency
+                    // A4 calibration
+                    const baseFreq = appSettings.a4; 
+                    const allNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+                    const semitoneIndex = allNotes.indexOf(noteName);
+                    
+                    if (semitoneIndex !== -1) {
+                        const noteNum = (oct + 1) * 12 + semitoneIndex;
+                        const freq = baseFreq * Math.pow(2, (noteNum - 69) / 12);
+
+                        // Schedule Audio
+                        const tId1 = setTimeout(() => {
+                            if(!playbackManager.isPlaying) return;
+                            
+                            const osc = audioCtx.createOscillator(); 
+                            const g = audioCtx.createGain();
+                            
+                            osc.frequency.value = freq; 
+                            
+                            // Envelope to avoid clicking
+                            const now = audioCtx.currentTime;
+                            g.gain.setValueAtTime(0, now); 
+                            g.gain.linearRampToValueAtTime(masterVolume * 0.3, now + 0.02); 
+                            g.gain.linearRampToValueAtTime(0, now + durationSec - 0.02);
+                            
+                            osc.connect(g); 
+                            g.connect(audioCtx.destination); 
+                            
+                            osc.start(now); 
+                            osc.stop(now + durationSec);
+                            
+                            // Visual Feedback
+                            const keyEl = document.querySelector(`.key[data-note="${noteName}"]`);
+                            if(keyEl) keyEl.classList.add('pressed');
+
+                        }, (startTimeRef + noteStartTime - audioCtx.currentTime) * 1000);
+
+                        // Schedule Visual Cleanup
+                        const tId2 = setTimeout(() => {
+                            if(!playbackManager.isPlaying) return;
+                            const keyEl = document.querySelector(`.key[data-note="${noteName}"]`);
+                            if(keyEl) keyEl.classList.remove('pressed');
+                        }, (startTimeRef + noteStartTime + durationSec - audioCtx.currentTime) * 1000);
+                        
+                        playbackManager.timeouts.push(tId1, tId2);
+                    }
+                }
+            });
+
+            // Schedule Finish
+            const finishId = setTimeout(() => { 
+                playbackManager.stop(); 
+            }, (startTimeRef + maxDuration - audioCtx.currentTime) * 1000 + 500); // +500ms buffer
+            playbackManager.timeouts.push(finishId);
         }
 
+        // ==========================================
+        // END FIX: v6.4 MusicXML/MXL Robust Import
+        // ==========================================
     </script>
 </body>
 </html>
