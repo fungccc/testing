@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AURA Studio v10.0 - Omni Station</title>
+    <title>AURA Studio v10.1 - Omni Station (Fix)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.8/build/opensheetmusicdisplay.min.js"></script>
@@ -18,7 +18,7 @@
             --neon-purple: #bd00ff;
             --neon-pink: #ff0055;
             --neon-green: #00ff9d;
-            --neon-orange: #ff9d00; /* Drone Color */
+            --neon-orange: #ff9d00;
             
             --text-main: #ffffff;
             --text-mute: #888;
@@ -77,9 +77,8 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             box-shadow: 0 0 30px rgba(0,0,0,0.3); transition: border-color 0.2s, box-shadow 0.2s;
         }
-        /* Accuracy Colors */
         .note-ring.perfect { border-color: var(--neon-green); box-shadow: 0 0 40px rgba(0, 255, 157, 0.4); }
-        .note-ring.good { border-color: #ffd700; } /* Gold */
+        .note-ring.good { border-color: #ffd700; }
         .note-ring.target { border-color: var(--neon-cyan); box-shadow: 0 0 30px rgba(0, 242, 255, 0.3); }
 
         .hud-note { font-size: 5rem; font-weight: 200; line-height: 1; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
@@ -109,7 +108,6 @@
         .transport-btn.playing { background: rgba(255,0,85,0.2); color: var(--neon-pink); border-color: var(--neon-pink); }
         .transport-btn.recording { background: var(--neon-pink); color: #fff; animation: pulse 1.5s infinite; }
         
-        /* A-B Loop Buttons */
         .loop-controls { display: flex; gap: 4px; background: #111; padding: 4px; border-radius: 12px; border: 1px solid #333; margin-right: 10px; }
         .loop-btn { 
             width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: #555; 
@@ -118,13 +116,11 @@
         .loop-btn.set { color: var(--neon-cyan); background: rgba(0, 242, 255, 0.1); }
         .loop-btn.active { color: #000; background: var(--neon-cyan); }
 
-        /* Track Toggles */
         .track-controls { display: flex; gap: 6px; background: #111; padding: 4px; border-radius: 20px; border: 1px solid #333; margin-right: 10px;}
         .track-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent; color: #444; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         .track-btn.active#btnToggleMetro { color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan); }
         .track-btn.active#btnToggleMelody { color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple); }
 
-        /* --- KEYBOARD DRAWER --- */
         .keyboard-drawer {
             background: #080808; border-top: 1px solid #222; overflow: hidden; height: 0; transition: height 0.3s;
             display: flex; flex-direction: column;
@@ -144,14 +140,11 @@
         .key { cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-weight: bold; border-radius: 0 0 4px 4px; user-select: none; }
         .key.natural { width: 38px; height: 70px; background: #eee; color: #333; border-bottom: 4px solid #ccc; font-size: 0.8rem; }
         .key.sharp { width: 28px; height: 45px; background: #222; color: #fff; border-bottom: 4px solid #000; font-size: 0.7rem; }
-        
-        /* Key States */
         .key:active, .key.pressed { transform: translateY(2px); border-bottom-width: 2px; }
-        .key.active { background: var(--neon-cyan) !important; color: #000 !important; } /* Detected */
-        .key.drone { background: var(--neon-orange) !important; color: #000 !important; box-shadow: 0 0 15px var(--neon-orange); animation: drone-pulse 2s infinite; } /* Drone Mode */
+        .key.active { background: var(--neon-cyan) !important; color: #000 !important; } 
+        .key.drone { background: var(--neon-orange) !important; color: #000 !important; box-shadow: 0 0 15px var(--neon-orange); animation: drone-pulse 2s infinite; }
         @keyframes drone-pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        /* --- MODALS --- */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 200; }
         .modal-content { max-width: 450px; margin: 40px auto; background: #151515; border: 1px solid var(--glass-border); padding: 25px; border-radius: 20px; height: 85vh; overflow-y: auto; }
         .setting-row { margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; }
@@ -172,7 +165,7 @@
         <div class="top-left">
             <button class="icon-btn" id="openSettings">⚙️</button>
             <div class="brand-pill">
-                <span class="brand-logo">AURA v10</span>
+                <span class="brand-logo">AURA v10.1</span>
                 <div class="indicator-dot" id="midiStatus" title="MIDI"></div>
             </div>
         </div>
@@ -302,12 +295,20 @@
             </div>
 
             <div class="setting-row">
-                <div class="label-row"><span>Master Volume</span> <span id="volValueDisplay">150%</span></div>
-                <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5">
+                <div class="label-row"><span>Master Volume</span> <span id="volValueDisplay">100%</span></div>
+                <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.0">
             </div>
             <div class="setting-row">
                 <div class="label-row"><span>A4 Reference</span> <span id="a4Display">440 Hz</span></div>
                 <input type="range" id="a4Slider" min="430" max="450" step="1" value="440">
+            </div>
+             <div class="setting-row">
+                <div class="label-row"><span>Gate (Sensitivity)</span> <span id="gateDisplay">Low</span></div>
+                <input type="range" id="gateSlider" min="0.001" max="0.05" step="0.001" value="0.003">
+            </div>
+             <div class="setting-row">
+                <div class="label-row"><span>Smoothing (Stability)</span> <span id="smoothDisplay">Balanced</span></div>
+                <input type="range" id="smoothSlider" min="0.1" max="0.9" step="0.1" value="0.3">
             </div>
             <div class="setting-row">
                 <div class="label-row"><span>Target Lock (Visual)</span></div>
@@ -353,7 +354,7 @@
         </div>
     </div>
 
-       <script>
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
             let analyser, micSource, gainNode, dataArray, mediaStream;
@@ -362,7 +363,7 @@
             let droneOsc = null, droneGain = null;
             let isRunning = false;
             
-            // Reverb Impulse Response
+            // Reverb IR
             function createImpulseResponse(duration, decay, reverse) {
                 const sampleRate = audioCtx.sampleRate;
                 const length = sampleRate * duration;
@@ -377,11 +378,11 @@
                 return impulse;
             }
 
-            // Init Audio Graph
+            // Audio Graph Init
             masterGain = audioCtx.createGain(); masterGain.gain.value = 1.0;
             reverbNode = audioCtx.createConvolver();
             reverbGain = audioCtx.createGain(); reverbGain.gain.value = 0.0;
-            try { reverbNode.buffer = createImpulseResponse(2.0, 2.0, false); } catch(e){ console.warn("Reverb gen failed", e); }
+            reverbNode.buffer = createImpulseResponse(2.0, 2.0, false);
             
             masterGain.connect(audioCtx.destination);
             masterGain.connect(reverbNode);
@@ -403,71 +404,74 @@
             let currentBeatType = 4;
             
             // Loop State
-            let loopA = null; 
-            let loopB = null;
-            let isLoopActive = false;
+            let loopA = null; let loopB = null; let isLoopActive = false;
 
-            // Recorder & MIDI
-            let mediaRecorder = null; let audioChunks = []; let wavBlob = null; let isRecording = false;
-            let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
-            
-            // Backing Track
+            // Backing
             let backingBuffer = null; let backingSource = null; let backingGain = null;
 
-            // [FIX] Complete UI Object
+            // Restored Settings State
+            const appSettings = {
+                a4: 440,
+                gate: 0.003,
+                smoothing: 0.3,
+                targetMode: false,
+                targetNoteIndex: 69,
+                masterVol: 1.0
+            };
+
             const ui = {
                 hz: document.getElementById('hz'), note: document.getElementById('note'), oct: document.getElementById('octave'), cents: document.getElementById('cents'),
                 noteRing: document.getElementById('noteRing'),
+                startBtn: document.getElementById('startBtn'), // FIXED: Added startBtn
                 btnPlay: document.getElementById('btnPlay'), btnStop: document.getElementById('btnStop'),
-                btnRec: document.getElementById('btnRec'), 
-                startBtn: document.getElementById('startBtn'), // Fixed missing ID
-                btnLoad: document.getElementById('btnLoad'), // Fixed missing ID
-                btnExportXML: document.getElementById('btnExportXML'),
-                btnExportWAV: document.getElementById('btnExportWAV'),
+                btnRec: document.getElementById('btnRec'),
                 btnLoopA: document.getElementById('btnLoopA'), btnLoopB: document.getElementById('btnLoopB'), btnLoopToggle: document.getElementById('btnLoopToggle'),
                 rateSlider: document.getElementById('rateSlider'), bpmSlider: document.getElementById('bpmSlider'),
                 transDisplay: document.getElementById('transDisplay'),
                 reverbToggle: document.getElementById('btnReverbToggle'), reverbMix: document.getElementById('reverbMix'),
-                keys: document.querySelectorAll('.key'),
-                midiStatus: document.getElementById('midiStatus'),
-                fileInput: document.getElementById('fileInput')
+                volSlider: document.getElementById('volSlider'), a4Slider: document.getElementById('a4Slider'),
+                gateSlider: document.getElementById('gateSlider'), smoothSlider: document.getElementById('smoothSlider'),
+                targetToggle: document.getElementById('targetModeToggle'), targetSelect: document.getElementById('targetNoteSelect'),
+                keys: document.querySelectorAll('.key')
             };
 
-            // === MIDI SUPPORT RESTORED ===
-            if (navigator.requestMIDIAccess) {
-                navigator.requestMIDIAccess().then(onMIDISuccess, () => console.log("MIDI fail"));
-            }
-            function onMIDISuccess(midiAccess) {
-                for (let input of midiAccess.inputs.values()) { input.onmidimessage = onMIDIMessage; }
-                midiAccess.onstatechange = (e) => {
-                    if(e.port.type === 'input' && e.port.state === 'connected') ui.midiStatus.classList.add('active');
-                    else if(midiAccess.inputs.size === 0) ui.midiStatus.classList.remove('active');
-                };
-                if(midiAccess.inputs.size > 0) ui.midiStatus.classList.add('active');
-            }
-            function onMIDIMessage(event) {
-                const [cmd, note, velocity] = event.data;
-                const noteNameIndex = note % 12;
-                const octave = Math.floor(note / 12) - 1;
-                const noteName = notes[noteNameIndex];
-                
-                if (cmd === 144 && velocity > 0) { // Note On
-                    const key = document.querySelector(`.key[data-note="${noteName}"]`);
-                    if(key) key.classList.add('active');
-                    
-                    // Synthesize
-                    const freq = 440 * Math.pow(2, (note - 69) / 12);
-                    playTone(freq, 0, noteName, true); // Sustained
-                    
-                    if(isRecording) processRecording(noteName, octave);
-                } else if (cmd === 128 || (cmd === 144 && velocity === 0)) { // Note Off
-                    const key = document.querySelector(`.key[data-note="${noteName}"]`);
-                    if(key) key.classList.remove('active');
-                    stopTone(); 
-                }
-            }
+            // SETTINGS LISTENERS (Restored)
+            ui.volSlider.addEventListener('input', function() { 
+                appSettings.masterVol = parseFloat(this.value); 
+                document.getElementById('volValueDisplay').textContent = Math.round(appSettings.masterVol * 100) + "%";
+                masterGain.gain.setTargetAtTime(appSettings.masterVol, audioCtx.currentTime, 0.1); 
+            });
+            ui.a4Slider.addEventListener('input', function() { 
+                appSettings.a4 = parseInt(this.value); 
+                document.getElementById('a4Display').textContent = appSettings.a4 + " Hz"; 
+            });
+            ui.gateSlider.addEventListener('input', function() { 
+                appSettings.gate = parseFloat(this.value); 
+                document.getElementById('gateDisplay').textContent = (appSettings.gate*1000).toFixed(1); 
+            });
+            ui.smoothSlider.addEventListener('input', function() { 
+                appSettings.smoothing = parseFloat(this.value); 
+                document.getElementById('smoothDisplay').textContent = Math.round(appSettings.smoothing*100)+"%"; 
+            });
 
-            // === SETTINGS HANDLERS ===
+            // TARGET MODE
+            function initTargetSelect() {
+                 ui.targetSelect.innerHTML = "";
+                 const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+                 for(let i=24; i<96; i++) {
+                     const opt = document.createElement('option');
+                     opt.value = i; opt.text = notes[i%12] + (Math.floor(i/12)-1);
+                     ui.targetSelect.appendChild(opt);
+                 }
+            }
+            initTargetSelect();
+            ui.targetToggle.onchange = (e) => { 
+                appSettings.targetMode = e.target.checked; 
+                ui.targetSelect.disabled = !e.target.checked; 
+            };
+            ui.targetSelect.onchange = (e) => { appSettings.targetNoteIndex = parseInt(e.target.value); };
+
+            // TRANSPOSE & REVERB
             window.setTranspose = (delta) => {
                 if (delta === 0) transposeSemitones = 0; else transposeSemitones += delta;
                 ui.transDisplay.textContent = (transposeSemitones > 0 ? "+" : "") + transposeSemitones;
@@ -485,7 +489,7 @@
             };
             ui.reverbMix.oninput = (e) => { if(isReverbOn) reverbGain.gain.value = e.target.value; };
 
-            // === LOOP HANDLERS ===
+            // LOOP HANDLERS
             ui.btnLoopA.onclick = () => {
                 loopA = playbackManager.currentScoreTime;
                 ui.btnLoopA.classList.add('set');
@@ -503,69 +507,23 @@
                 } else { alert("Please set valid A and B points first."); }
             };
 
-            // === TRACK TOGGLES ===
+            // TRACK TOGGLES
             document.getElementById('btnToggleMetro').onclick = function() {
-                isMetroEnabled = !isMetroEnabled; this.classList.toggle('active', isMetroEnabled);
+                isMetroEnabled = !isMetroEnabled;
+                this.classList.toggle('active', isMetroEnabled);
                 document.getElementById('metroToggle').checked = isMetroEnabled;
             };
             document.getElementById('btnToggleMelody').onclick = function() {
-                isMelodyEnabled = !isMelodyEnabled; this.classList.toggle('active', isMelodyEnabled);
+                isMelodyEnabled = !isMelodyEnabled;
+                this.classList.toggle('active', isMelodyEnabled);
             };
 
-            // === RECORDER LOGIC RESTORED ===
-            ui.btnRec.onclick = () => {
-                isRecording = !isRecording;
-                if (isRecording) { 
-                    recordedNotes = []; currentNoteEvent = null; 
-                    ui.btnRec.classList.add('recording'); 
-                    ui.btnExportXML.style.display = 'none'; ui.btnExportWAV.style.display = 'none';
-                    if (mediaStream) {
-                        audioChunks = [];
-                        mediaRecorder = new MediaRecorder(mediaStream);
-                        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                        mediaRecorder.start();
-                    }
-                } else { 
-                    if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime}); 
-                    ui.btnRec.classList.remove('recording'); 
-                    if(recordedNotes.length) ui.btnExportXML.style.display = 'inline-flex';
-                    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                        mediaRecorder.stop();
-                        mediaRecorder.onstop = () => {
-                            wavBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            ui.btnExportWAV.style.display = 'inline-flex';
-                        };
-                    }
-                }
-            };
-            
-            function processRecording(detectedNote, detectedOctave) {
-                const now = Date.now();
-                if (!detectedNote) {
-                    if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); currentNoteEvent = null; }
-                    return;
-                }
-                if (currentNoteEvent && detectedNote === currentNoteEvent.note && detectedOctave === currentNoteEvent.octave) return;
-                if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); }
-                currentNoteEvent = {note: detectedNote, octave: detectedOctave}; noteStartTime = now;
-            }
-
-            ui.btnExportXML.onclick = () => {
-                let x = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd"><score-partwise version="4.0"><part-list><score-part id="P1"><part-name>Rec</part-name></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>1000</divisions></attributes>`;
-                recordedNotes.forEach(n=>{ let s=n.note[0], a=n.note.includes('#'); x+=`<note><pitch><step>${s}</step>${a?'<alter>1</alter>':''}<octave>${n.octave}</octave></pitch><duration>${n.duration}</duration><type>whole</type></note>`; });
-                x+=`</measure></part></score-partwise>`;
-                const blob = new Blob([x], { type: 'text/xml' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `aura_rec_${Date.now()}.musicxml`; a.click();
-            };
-            ui.btnExportWAV.onclick = () => {
-                if (!wavBlob) return;
-                const a = document.createElement('a'); a.href = URL.createObjectURL(wavBlob); a.download = `aura_rec_${Date.now()}.wav`; a.click();
-            };
-
-            // === PLAYBACK MANAGER ===
+            // PLAYBACK MANAGER
             const playbackManager = {
-                timeouts: [], isPlaying: false, isPaused: false, currentScoreTime: 0,
-                scoreAnchor: 0, audioAnchor: 0,
-
+                timeouts: [],
+                isPlaying: false, isPaused: false,
+                currentScoreTime: 0,
+                
                 clearTimers: function() { this.timeouts.forEach(id => clearTimeout(id)); this.timeouts = []; },
                 
                 play: function(xmlDoc, startOffset = 0) {
@@ -574,9 +532,10 @@
                         ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.add('playing');
                     } else {
                         this.clearTimers();
-                        if (isCountInEnabled && startOffset === 0 && !this.isCountingIn) { this.startCountIn(xmlDoc); return; }
+                        if (isCountInEnabled && startOffset === 0 && !this.isCountingIn) {
+                            this.startCountIn(xmlDoc); return;
+                        }
                         this.isPlaying = true; this.isPaused = false; this.isCountingIn = false;
-                        this.scoreAnchor = startOffset; this.audioAnchor = audioCtx.currentTime;
                         ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.add('playing');
                         
                         // Backing Track
@@ -585,12 +544,11 @@
                             backingSource = audioCtx.createBufferSource();
                             backingSource.buffer = backingBuffer;
                             backingSource.playbackRate.value = playbackSpeed;
-                            backingGain = audioCtx.createGain(); backingGain.gain.value = 1.5;
+                            backingGain = audioCtx.createGain(); backingGain.gain.value = appSettings.masterVol;
                             backingSource.connect(backingGain); backingGain.connect(masterGain); 
                             if(analyser) backingGain.connect(analyser);
                             backingSource.start(0, startOffset);
                         }
-
                         if(xmlDoc) playMusicXML(xmlDoc, startOffset);
                     }
                 },
@@ -617,7 +575,7 @@
 
                 stop: function() {
                     this.clearTimers(); this.isPlaying = false; this.isPaused = false;
-                    this.scoreAnchor = 0; this.audioAnchor = 0; this.currentScoreTime = 0;
+                    this.currentScoreTime = 0;
                     ui.btnPlay.textContent = "▶"; ui.btnPlay.classList.remove('playing');
                     if (backingSource) try{backingSource.stop()}catch(e){};
                     if (osmd && osmd.cursor) osmd.cursor.reset();
@@ -625,7 +583,6 @@
                 }
             };
 
-            // CORE ENGINE
             function playMusicXML(doc, startOffset) {
                 let divisions = 480;
                 const divTag = doc.querySelector("divisions");
@@ -634,7 +591,7 @@
                 let secPerBeat = (60 / originalBPM) / playbackSpeed;
                 const startTimeRef = audioCtx.currentTime + 0.1;
                 
-                // Metronome
+                // Metronome Schedule
                 let currentBeatScore = Math.floor(startOffset / secPerBeat) * secPerBeat;
                 let maxTime = startOffset + 300; 
                 while (currentBeatScore < maxTime) {
@@ -648,7 +605,7 @@
                     currentBeatScore += secPerBeat;
                 }
 
-                // Notes
+                // Note Schedule
                 const parts = doc.querySelectorAll("part");
                 let maxGlobalTime = 0;
                 let isFirstNote = true;
@@ -663,8 +620,7 @@
                                 const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
                                 const durSec = (dur/divisions) * (60/originalBPM);
                                 const noteStart = currentTime + mCursor;
-                                
-                                if (node.querySelector("chord")) { } else { mCursor += durSec; }
+                                if (!node.querySelector("chord")) mCursor += durSec;
 
                                 if (noteStart >= startOffset) {
                                     const delay = (noteStart - startOffset) / playbackSpeed;
@@ -674,13 +630,11 @@
                                         const ct = setTimeout(() => {
                                             if (playbackManager.isPlaying && osmd.cursor) {
                                                 playbackManager.currentScoreTime = noteStart;
-                                                
                                                 if (isLoopActive && noteStart >= loopB) {
                                                     playbackManager.stop();
                                                     playbackManager.play(lastParsedDoc, loopA);
                                                     return;
                                                 }
-
                                                 if (isFirstNote && startOffset === 0) { osmd.cursor.show(); isFirstNote = false; }
                                                 else { osmd.cursor.next(); }
                                                 if (isSheetMode) osmd.cursor.cursorElement.scrollIntoView({behavior:"smooth", block:"nearest", inline:"center"});
@@ -697,15 +651,13 @@
                                             let nn = step + (alt === "1" ? "#" : "");
                                             if(alt==="-1") nn = step==="B"?"A#":step==="E"?"D#":"G#";
                                             
-                                            // Transpose
+                                            // V10 Transpose + A4
                                             let baseMidi = (parseInt(oct)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn);
                                             let finalMidi = baseMidi + transposeSemitones;
-                                            let freq = 440 * Math.pow(2, (finalMidi - 69) / 12);
+                                            let freq = appSettings.a4 * Math.pow(2, (finalMidi - 69) / 12); // Uses AppSettings
                                             
                                             const st = setTimeout(() => {
-                                                if (playbackManager.isPlaying) {
-                                                    playTone(freq, realDur, nn);
-                                                }
+                                                if (playbackManager.isPlaying) playTone(freq, realDur, nn);
                                             }, delay * 1000);
                                             playbackManager.timeouts.push(st);
                                         }
@@ -713,28 +665,17 @@
                                 }
                                 maxGlobalTime = Math.max(maxGlobalTime, noteStart + durSec);
                             }
-                            else if (node.tagName === "backup") { const d = parseFloat(node.querySelector("duration")?.textContent||0); mCursor -= (d/divisions)*(60/originalBPM); }
-                            else if (node.tagName === "forward") { const d = parseFloat(node.querySelector("duration")?.textContent||0); mCursor += (d/divisions)*(60/originalBPM); }
                         });
                         currentTime += mCursor;
                     });
                 });
             }
 
-            function playTone(freq, dur, noteName, sustained = false) {
-                if(sustained) {
-                    // MIDI input sustained logic
-                    if (toneOsc) stopTone();
-                    toneOsc = audioCtx.createOscillator(); toneOsc.type = 'triangle';
-                    toneOsc.frequency.value = freq;
-                    toneGain = audioCtx.createGain(); toneGain.gain.value = 0.5;
-                    toneOsc.connect(toneGain); toneGain.connect(masterGain);
-                    toneOsc.start();
-                    return;
-                }
-                // Playback short logic
-                const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                osc.type = 'triangle'; osc.frequency.value = freq;
+            function playTone(freq, dur, noteName) {
+                const osc = audioCtx.createOscillator();
+                const g = audioCtx.createGain();
+                osc.type = 'triangle'; 
+                osc.frequency.value = freq;
                 g.gain.setValueAtTime(0, audioCtx.currentTime);
                 g.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.01);
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + dur);
@@ -743,13 +684,6 @@
 
                 const k = document.querySelector(`.key[data-note="${noteName}"]`);
                 if(k) { k.classList.add('pressed'); setTimeout(()=>k.classList.remove('pressed'), dur*1000); }
-            }
-
-            function stopTone() {
-                if (toneOsc) { 
-                    try { toneOsc.stop(); toneOsc.disconnect(); } catch(e){} 
-                    toneOsc = null; 
-                }
             }
 
             function playClick(strong) {
@@ -762,20 +696,24 @@
                 osc.start(); osc.stop(audioCtx.currentTime + 0.05);
             }
 
-            // DRONE MODE
             function toggleDrone(note, oct) {
                 if (droneOsc) {
                     droneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-                    droneOsc.stop(audioCtx.currentTime + 0.1); droneOsc = null;
+                    droneOsc.stop(audioCtx.currentTime + 0.1);
+                    droneOsc = null;
                     document.querySelectorAll('.key.drone').forEach(k=>k.classList.remove('drone'));
-                    return; 
+                    return;
                 }
                 const noteNum = (oct + 1) * 12 + notes.indexOf(note);
-                const freq = 440 * Math.pow(2, (noteNum - 69) / 12);
+                const freq = appSettings.a4 * Math.pow(2, (noteNum - 69) / 12); // Uses AppSettings
                 
-                droneOsc = audioCtx.createOscillator(); droneOsc.type = 'sawtooth'; droneOsc.frequency.value = freq;
+                droneOsc = audioCtx.createOscillator();
+                droneOsc.type = 'sawtooth';
+                droneOsc.frequency.value = freq;
                 droneGain = audioCtx.createGain();
-                const filter = audioCtx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 800;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = "lowpass"; filter.frequency.value = 800;
+                
                 droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
                 droneGain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.5);
                 
@@ -793,13 +731,12 @@
             ui.keys.forEach(k => {
                 k.onmousedown = (e) => { 
                     e.preventDefault();
-                    // Click key to toggle C3 Drone
                     const n = k.getAttribute('data-note');
                     toggleDrone(n, 3);
                 };
             });
 
-            // MIC & PITCH
+            // MIC START & YIN ALGORITHM (Restored from v9)
             ui.startBtn.onclick = async () => {
                 await audioCtx.resume();
                 document.getElementById('startOverlay').style.display='none';
@@ -813,64 +750,69 @@
                 } catch(e) { alert("Mic Error: "+e); }
             };
 
+            let smoothedCents = 0;
             function updatePitch() {
                 if(!isRunning) return;
                 analyser.getFloatTimeDomainData(dataArray);
-                const pitch = autoCorrelate(dataArray, audioCtx.sampleRate);
                 
-                if (pitch > 50) {
-                    const noteFloat = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
-                    const noteInt = Math.round(noteFloat);
-                    const cents = Math.floor((noteFloat - noteInt) * 100);
-                    const nName = notes[noteInt % 12];
-                    const oct = Math.floor(noteInt / 12) - 1;
-
-                    ui.hz.textContent = pitch.toFixed(1);
-                    ui.note.textContent = nName;
-                    ui.oct.textContent = oct;
-                    ui.cents.textContent = (cents>0?"+":"")+cents;
-
-                    // Accuracy Ring
-                    if (Math.abs(cents) < 10) ui.noteRing.className = "note-ring perfect";
-                    else if (Math.abs(cents) < 25) ui.noteRing.className = "note-ring good";
-                    else ui.noteRing.className = "note-ring";
-
-                    document.querySelectorAll('.key.active').forEach(k=>k.classList.remove('active'));
-                    const k = document.querySelector(`.key[data-note="${nName}"]`);
-                    if(k) k.classList.add('active');
-                } else { ui.noteRing.className = "note-ring"; }
+                // RMS Gate Check
+                let sum=0; for(let i=0;i<dataArray.length;i+=4) sum+=dataArray[i]*dataArray[i];
+                const rms = Math.sqrt(sum/(dataArray.length/4));
                 
-                if(isSheetMode) drawTunerOnCanvas(); 
+                if (rms > appSettings.gate) {
+                    const pitch = detectPitch(dataArray, audioCtx.sampleRate);
+                    if (pitch > 50) {
+                        // Calc
+                        const noteFloat = 12 * (Math.log(pitch / appSettings.a4) / Math.log(2)) + 69;
+                        let rNote = Math.round(noteFloat);
+                        if(appSettings.targetMode) rNote = appSettings.targetNoteIndex;
+                        
+                        const cents = 1200 * Math.log(pitch / (appSettings.a4 * Math.pow(2, (rNote-69)/12))) / Math.log(2);
+                        smoothedCents = (smoothedCents * appSettings.smoothing) + (cents * (1 - appSettings.smoothing));
+                        
+                        const nName = notes[rNote % 12];
+                        const oct = Math.floor(rNote / 12) - 1;
+
+                        ui.hz.textContent = pitch.toFixed(1);
+                        ui.note.textContent = nName;
+                        ui.oct.textContent = oct;
+                        ui.cents.textContent = (smoothedCents>0?"+":"")+Math.round(smoothedCents);
+
+                        // Accuracy Ring
+                        if (Math.abs(smoothedCents) < 10) ui.noteRing.className = "note-ring perfect";
+                        else if (Math.abs(smoothedCents) < 25) ui.noteRing.className = "note-ring good";
+                        else ui.noteRing.className = "note-ring";
+
+                        document.querySelectorAll('.key.active').forEach(k=>k.classList.remove('active'));
+                        const k = document.querySelector(`.key[data-note="${nName}"]`);
+                        if(k) k.classList.add('active');
+                    }
+                } else {
+                    ui.noteRing.className = "note-ring";
+                }
+                if(isSheetMode) drawTunerOnCanvas();
                 requestAnimationFrame(updatePitch);
             }
 
+            // YIN Algorithm (Restored)
+            function detectPitch(buffer, sampleRate) {
+                const threshold = 0.15; const halfSize = Math.floor(buffer.length / 2); const yinBuffer = new Float32Array(halfSize);
+                for (let t = 0; t < halfSize; t++) { let sum = 0; for (let i = 0; i < halfSize; i += 2) { const d = buffer[i] - buffer[i + t]; sum += d * d; } yinBuffer[t] = sum; }
+                yinBuffer[0] = 1; let runningSum = 0; for (let t = 1; t < halfSize; t++) { runningSum += yinBuffer[t]; yinBuffer[t] *= t / runningSum; }
+                let tau = -1; for (let t = 2; t < halfSize; t++) { if (yinBuffer[t] < threshold) { while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++; tau = t; break; } }
+                if (tau === -1) return -1; const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
+                return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
+            }
+
             function drawTunerOnCanvas() {
-                const cvs = document.getElementById('tunerCanvas');
-                if(!cvs) return;
-                // Basic visualizer logic can be added here if needed for sheet mode overlay
+               const canvas = document.getElementById('tunerCanvas');
+               const ctx = canvas.getContext('2d');
+               ctx.clearRect(0,0,canvas.width,canvas.height); // Simple clear for now in sheet mode
             }
 
-            function autoCorrelate(buf, sr) {
-                let size = buf.length; let rms = 0;
-                for (let i=0;i<size;i++) rms += buf[i]*buf[i];
-                if (Math.sqrt(rms/size) < 0.01) return -1;
-
-                let r1=0, r2=size-1, thres=0.2;
-                for (let i=0; i<size/2; i++) if (Math.abs(buf[i]) < thres) { r1=i; break; }
-                for (let i=1; i<size/2; i++) if (Math.abs(buf[size-i]) < thres) { r2=size-i; break; }
-                buf = buf.slice(r1, r2); size = buf.length;
-
-                let c = new Array(size).fill(0);
-                for (let i=0; i<size; i++) for (let j=0; j<size-i; j++) c[i] = c[i] + buf[j]*buf[j+i];
-                let d=0; while (c[d]>c[d+1]) d++;
-                let maxval=-1, maxpos=-1;
-                for (let i=d; i<size; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
-                return sr/maxpos;
-            }
-
-            // FILE & UI
-            ui.btnLoad.onclick = () => ui.fileInput.click();
-            ui.fileInput.onchange = (e) => {
+            // File & UI Logic
+            ui.btnLoad.onclick = () => document.getElementById('fileInput').click();
+            document.getElementById('fileInput').onchange = (e) => {
                 const f = e.target.files[0];
                 if (f.name.endsWith('.wav') || f.name.endsWith('.mp3')) {
                     const r = new FileReader();
@@ -888,7 +830,6 @@
                         const bpmTag = lastParsedDoc.querySelector("per-minute") || lastParsedDoc.querySelector("sound[tempo]");
                         if(bpmTag) originalBPM = parseFloat(bpmTag.textContent || bpmTag.getAttribute("tempo"));
                         document.getElementById('origBpmDisplay').textContent = "Ref: " + originalBPM;
-
                         if(!osmd) osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmdContainer", {autoResize:true, backend:"svg", drawingParameters:"compacttight"});
                         osmd.load(xml).then(() => { osmd.render(); ui.btnPlay.disabled=false; ui.btnStop.disabled=false; });
                     };
@@ -905,7 +846,6 @@
                 this.textContent = isSheetMode ? "🎼" : "👁️";
             };
 
-            // MODALS
             document.getElementById('openSettings').onclick = () => document.getElementById('settingsModal').style.display='block';
             document.getElementById('closeSettings').onclick = () => document.getElementById('settingsModal').style.display='none';
             document.getElementById('btnTempo').onclick = () => document.getElementById('tempoModal').style.display='block';
@@ -914,6 +854,5 @@
             ui.btnPlay.onclick = () => isRunning ? (playbackManager.isPlaying ? playbackManager.stop() : playbackManager.play(lastParsedDoc)) : alert("Click Initialize First");
         });
     </script>
-
 </body>
 </html>
