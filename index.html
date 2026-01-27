@@ -3,388 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AURA Studio - v8.9 Virtuoso Edition</title>
+    <title>AURA Studio - v9.0 Orbital Station</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.8/build/opensheetmusicdisplay.min.js"></script>
 
     <style>
         :root {
-            /* --- AURA BRAND COLORS --- */
-            --bg-base: #050505;
-            --bg-gradient: radial-gradient(circle at 50% 30%, #151515 0%, #000000 100%);
-            --glass-bg: rgba(20, 20, 20, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-blur: blur(20px);
+            /* --- ORBITAL THEME --- */
+            --bg-deep: #000000;
+            --bg-panel: rgba(20, 20, 23, 0.95);
+            --glass-surface: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-blur: blur(24px);
             
-            --text-main: #f0f0f0;
-            --text-dim: #777;
+            --text-main: #ffffff;
+            --text-mute: #666666;
             
-            --aura-primary: #00f2ff; /* Cyan */
-            --aura-accent: #7000ff;  /* Purple */
-            --aura-hot: #ff0055;     /* Pink/Red */
-            --aura-midi: #00ff9d;    /* Green for MIDI */
+            /* NEON PALETTE */
+            --neon-cyan: #00f2ff;
+            --neon-purple: #bd00ff;
+            --neon-pink: #ff0055;
+            --neon-green: #00ff9d;
             
-            --btn-hover: rgba(255, 255, 255, 0.1);
+            --panel-radius: 16px;
+            --btn-radius: 8px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            background: var(--bg-base);
-            background-image: var(--bg-gradient);
+            background: var(--bg-deep);
             color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-            user-select: none; -webkit-user-select: none; touch-action: manipulation;
+            user-select: none; -webkit-user-select: none;
         }
-        
-        /* HEADER */
-        header {
+
+        /* --- TOP SATELLITE BAR --- */
+        .top-bar {
+            position: absolute; top: 0; left: 0; right: 0; height: 60px;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0 15px; 
-            height: 60px;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-            border-bottom: 1px solid var(--glass-border);
-            z-index: 50; flex-shrink: 0;
+            padding: 0 20px; z-index: 100; pointer-events: none; /* Let clicks pass through empty space */
         }
+        .top-left, .top-right { pointer-events: auto; display: flex; gap: 10px; align-items: center; }
         
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-right { display: flex; align-items: center; gap: 8px; }
-        
-        .title { 
-            font-weight: 800; letter-spacing: 2px; color: #fff; font-size: 1.1rem; 
-            background: linear-gradient(90deg, #fff, var(--aura-primary));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        .brand-pill {
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 8px 16px; display: flex; align-items: center; gap: 8px;
         }
-        .title span { font-weight: 300; opacity: 0.7; font-size: 0.8rem; margin-left: 5px; -webkit-text-fill-color: #fff;}
+        .brand-logo { font-weight: 800; font-size: 0.9rem; letter-spacing: 2px; background: linear-gradient(90deg, #fff, var(--neon-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .midi-dot { font-size: 0.8rem; color: #333; transition: all 0.3s; }
+        .midi-dot.connected { color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green); }
 
         .icon-btn {
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            width: 40px; height: 40px; border-radius: 8px; 
+            width: 40px; height: 40px; border-radius: 50%;
+            background: var(--glass-surface); border: 1px solid var(--glass-border);
+            color: #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; transition: all 0.2s; backdrop-filter: blur(4px);
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.15); border-color: #fff; transform: translateY(-2px); }
+        .icon-btn:active { transform: scale(0.95); }
+        .icon-btn.primary { color: var(--neon-cyan); border-color: rgba(0, 242, 255, 0.3); }
+        .icon-btn.danger { color: var(--neon-pink); border-color: rgba(255, 0, 85, 0.3); }
+
+        /* --- ORBITAL STAGE (Visualizer/Sheet) --- */
+        .viewport-stage {
+            flex: 1; position: relative; overflow: hidden; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 40%, #1a1a1a 0%, #000 70%);
+        }
+        #tunerCanvas { width: 100%; height: 100%; display: block; position: absolute; }
+        #osmdContainer { 
+            position: absolute; top: 60px; bottom: 80px; left: 0; right: 0; /* Padding for bars */
+            margin: auto; width: 95%; height: auto;
+            background: #fff; border-radius: 4px; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s; overflow: auto;
+        }
+        .viewport-stage.sheet-active #tunerCanvas { opacity: 0; }
+        .viewport-stage.sheet-active #osmdContainer { opacity: 1; pointer-events: auto; }
+
+        /* --- HUD CAPSULE --- */
+        .hud-capsule {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center;
+            pointer-events: none; z-index: 50; transition: all 0.3s;
+        }
+        .viewport-stage.sheet-active .hud-capsule { top: 20px; transform: translateX(-50%) scale(0.7); opacity: 0.8; } /* Mini HUD in sheet mode */
+
+        .note-ring {
+            width: 140px; height: 140px; border-radius: 50%;
+            border: 2px solid var(--glass-border);
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3); position: relative;
+        }
+        .hud-note { font-size: 5rem; font-weight: 200; line-height: 1; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .hud-octave { font-size: 1.5rem; position: absolute; top: 30px; right: 20px; color: var(--text-mute); font-weight: 300; }
+        .hud-data { display: flex; gap: 15px; margin-top: 10px; }
+        .data-tag { background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-family: monospace; color: var(--text-mute); border: 1px solid var(--glass-border); }
+        .data-tag span { color: var(--neon-cyan); font-weight: bold; }
+        
+        .target-active .note-ring { border-color: var(--neon-cyan); box-shadow: 0 0 40px rgba(0, 242, 255, 0.2); }
+        .target-active .hud-note { color: var(--neon-cyan); text-shadow: 0 0 30px var(--neon-cyan); }
+
+        /* --- START BUTTON --- */
+        .start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 1.1rem; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(0,0,0,0.3); z-index: 80; backdrop-filter: blur(2px);
         }
-        .icon-btn:hover { background: var(--btn-hover); border-color: rgba(255,255,255,0.3); }
-        .icon-btn:active { transform: scale(0.92); }
-        .icon-btn:disabled { opacity: 0.2; cursor: not-allowed; }
-        
-        .icon-btn.active { 
-            color: var(--aura-primary); border-color: var(--aura-primary); 
-            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); background: rgba(0, 242, 255, 0.05);
+        #startBtn {
+            padding: 20px 50px; border-radius: 50px; border: none;
+            background: var(--neon-cyan); color: #000; font-weight: 800; font-size: 1.2rem;
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.4); cursor: pointer; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 2px;
         }
+        #startBtn:hover { transform: scale(1.05); box-shadow: 0 0 60px rgba(0, 242, 255, 0.6); }
 
-        /* MIDI Indicator */
-        #midiStatus { font-size: 0.8rem; color: #444; transition: color 0.3s; margin-left: 5px; }
-        #midiStatus.connected { color: var(--aura-midi); text-shadow: 0 0 10px rgba(0, 255, 157, 0.5); }
-
-        #btnRec { width: auto; padding: 0 12px; gap: 6px; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px;}
-        #btnRec.recording { 
-            background: rgba(255, 0, 85, 0.15); color: var(--aura-hot); border-color: var(--aura-hot); 
-            box-shadow: 0 0 10px rgba(255, 0, 85, 0.3); animation: pulse-glow 2s infinite; 
-        }
-        #btnPlay.playing { background: rgba(255, 0, 85, 0.1); color: var(--aura-hot); border-color: var(--aura-hot); }
-        #btnPlay.paused { background: rgba(0, 242, 255, 0.1); color: var(--aura-primary); border-color: var(--aura-primary); animation: border-blink 1.5s infinite; }
-        #btnLoad, #btnExportXML, #btnExportWAV { color: var(--aura-primary); }
-
-        @keyframes pulse-glow { 0% { box-shadow: 0 0 5px rgba(255,0,85,0.2); } 50% { box-shadow: 0 0 15px rgba(255,0,85,0.6); } 100% { box-shadow: 0 0 5px rgba(255,0,85,0.2); } }
-        @keyframes border-blink { 0% { border-color: var(--aura-primary); opacity:1; } 50% { border-color: transparent; opacity:0.7; } 100% { border-color: var(--aura-primary); opacity:1; } }
-        
-        .hidden-input { display: none; }
-        .separator { width: 1px; height: 24px; background: var(--glass-border); margin: 0 4px; }
-
-        /* READOUT */
-        .readout {
+        /* --- COMMAND DECK (Bottom) --- */
+        .command-deck {
+            background: var(--bg-panel); border-top: 1px solid var(--glass-border);
+            padding: 15px 20px; z-index: 90;
             display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-            text-align: center; padding: 10px 0; 
-            background: rgba(0,0,0,0.3);
-            z-index: 40; height: 90px; flex-shrink: 0;
-            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
-        .hz-val { font-size: 1.1rem; color: var(--text-dim); font-family: "Courier New", monospace; letter-spacing: -0.5px; }
-        .hz-label { font-size: 0.6rem; color: #555; display: block; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px;}
-        .note-container { display: flex; align-items: baseline; justify-content: center; width: 140px;}
-        .note-display { 
-            font-size: 5.5rem; font-weight: 300; line-height: 1; color: #fff; 
-            text-shadow: 0 0 20px rgba(255,255,255,0.1);
-        }
-        .note-octave { font-size: 2.2rem; color: var(--text-dim); margin-left: 8px; font-weight: 300; }
-        .cents-val { font-size: 1.1rem; color: var(--text-dim); font-family: "Courier New", monospace; }
-        .target-mode-active .note-display { color: var(--aura-primary); text-shadow: 0 0 25px rgba(0, 242, 255, 0.4); }
 
-        /* MAIN STAGE */
-        .main-stage { flex: 1; position: relative; overflow: hidden; }
-        #tunerCanvas { 
-            width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; 
-            z-index: 10; opacity: 0.9; transition: opacity 0.4s ease;
+        .deck-left, .deck-right { display: flex; gap: 10px; align-items: center; }
+        .deck-center { display: flex; gap: 15px; align-items: center; justify-content: center; }
+        .deck-right { justify-content: flex-end; }
+
+        .transport-btn {
+            width: 56px; height: 56px; border-radius: 20px;
+            background: #222; border: 1px solid #333; color: #fff;
+            font-size: 1.4rem; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center;
         }
-        #osmdContainer {
-            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
-            background: #fff; z-index: 5; 
-            overflow: auto; padding-top: 20px; 
-            visibility: hidden; 
-            scroll-behavior: auto; 
-        }
-        .main-stage.sheet-mode #tunerCanvas { opacity: 0; pointer-events: none; }
-        .main-stage.sheet-mode #osmdContainer { visibility: visible; z-index: 10; }
+        .transport-btn:hover { background: #333; border-color: #555; }
+        .transport-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         
-        .start-btn {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            padding: 16px 40px; 
-            background: rgba(0, 242, 255, 0.1);
-            border: 1px solid var(--aura-primary);
-            color: var(--aura-primary);
-            font-weight: 600; letter-spacing: 1px;
-            border-radius: 50px; cursor: pointer;
-            font-size: 1.1rem; z-index: 30; 
-            backdrop-filter: blur(5px);
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
-            transition: all 0.3s;
-        }
-        .start-btn:hover { background: var(--aura-primary); color: #000; box-shadow: 0 0 50px rgba(0, 242, 255, 0.6); }
-        .main-stage.sheet-mode .start-btn { display: none !important; }
-
-        #countInOverlay {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 60; font-size: 10rem; font-weight: 900; color: var(--aura-primary);
-            text-shadow: 0 0 40px var(--aura-primary); pointer-events: none; opacity: 0; transition: opacity 0.2s;
-        }
-
-        .zoom-controls {
-            position: absolute; bottom: 25px; right: 25px; 
-            display: none; flex-direction: column; gap: 12px; z-index: 50;
-        }
-        .main-stage.sheet-mode .zoom-controls { display: flex; }
-        .zoom-btn {
-            width: 44px; height: 44px; border-radius: 50%; background: rgba(20, 20, 20, 0.8);
-            border: 1px solid var(--glass-border); color: white; font-size: 1.4rem; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s;
-        }
-        .zoom-btn:active { transform: scale(0.9); background: #000; border-color: #666; }
-
-        /* KEYBOARD */
-        .keyboard-area { 
-            background: var(--glass-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
-            padding: 15px 0 20px 0; z-index: 40; border-top: 1px solid var(--glass-border); flex-shrink: 0; 
-        }
-        .octave-scroller { 
-            display: flex; overflow-x: auto; gap: 8px; padding: 0 20px 15px 20px; 
-            scrollbar-width: none; justify-content: center; 
-        }
-        .octave-scroller::-webkit-scrollbar { display: none; }
-        .pill { 
-            background: transparent; color: var(--text-dim); padding: 6px 14px; border-radius: 20px; 
-            font-size: 0.75rem; cursor: pointer; border: 1px solid var(--glass-border); flex-shrink: 0; letter-spacing: 0.5px; transition: all 0.2s;
-        }
-        .pill:hover { border-color: #666; color: #ccc; }
-        .pill.active { background: rgba(0, 242, 255, 0.15); color: var(--aura-primary); border-color: var(--aura-primary); font-weight: 600; box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+        #btnPlay.playing { background: rgba(255,0,85,0.2); color: var(--neon-pink); border-color: var(--neon-pink); box-shadow: 0 0 15px rgba(255,0,85,0.2); }
+        #btnRec.recording { background: var(--neon-pink); color: #fff; animation: pulse 1.5s infinite; border: none; }
         
-        .keys-main-container { display: flex; justify-content: center; gap: 16px; padding: 0 10px; }
-        .key-group { display: flex; flex-direction: column; align-items: center; position: relative; }
-        .sharps-row { display: flex; gap: 12px; margin-bottom: -15px; z-index: 10; }
-        .naturals-row { display: flex; gap: 4px; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,85,0.7); } 70% { box-shadow: 0 0 0 10px rgba(255,0,85,0); } 100% { box-shadow: 0 0 0 0 rgba(255,0,85,0); } }
+
+        .info-group { display: flex; flex-direction: column; cursor: pointer; }
+        .info-label { font-size: 0.6rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .info-val { font-family: "Courier New", monospace; font-size: 1.1rem; color: var(--neon-cyan); font-weight: bold; }
+
+        /* --- KEYBOARD DRAWER --- */
+        .keyboard-drawer {
+            background: #0a0a0a; border-top: 1px solid #222;
+            overflow: hidden; height: 140px; transition: height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: flex; flex-direction: column;
+        }
+        .keyboard-drawer.collapsed { height: 0; border-top: none; }
+
+        /* Reuse existing keyboard styles but refined */
+        .octave-scroller { display: flex; overflow-x: auto; gap: 8px; padding: 10px; justify-content: center; background: #111; scrollbar-width: none; }
+        .pill { font-size: 0.7rem; padding: 4px 10px; color: #666; border: 1px solid #333; border-radius: 12px; cursor: pointer; white-space: nowrap; }
+        .pill.active { background: rgba(0,242,255,0.2); color: var(--neon-cyan); border-color: var(--neon-cyan); }
+        
+        .keys-container { flex: 1; display: flex; justify-content: center; gap: 12px; padding-bottom: 10px; padding-top: 5px;}
+        .key-group { display: flex; flex-direction: column; align-items: center; }
+        .sharps { display: flex; gap: 10px; margin-bottom: -15px; z-index: 2; pointer-events: none; } /* Ptr events hack: keys handle clicks */
+        .sharps .key { pointer-events: auto; }
+        .naturals { display: flex; gap: 2px; }
         
         .key { 
-            width: 42px; height: 60px; 
-            background: linear-gradient(180deg, #333 0%, #222 100%);
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 0 0 6px 6px; 
-            display: flex; align-items: flex-end; justify-content: center; 
-            font-weight: 600; color: #ccc; font-size: 0.9rem; padding-bottom: 8px; 
-            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            transition: transform 0.1s, background 0.1s, box-shadow 0.1s;
+            cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; 
+            font-size: 0.8rem; font-weight: bold; border-radius: 0 0 4px 4px; user-select: none;
         }
-        .key.sharp { 
-            background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
-            height: 40px; border-radius: 0 0 4px 4px; padding-bottom: 0; align-items: center; 
-            border-color: rgba(0,0,0,0.5);
-        }
-        .key.active { background: var(--aura-primary); color: #000; box-shadow: 0 0 15px var(--aura-primary); border-color: var(--aura-primary); transform: translateY(2px); }
-        .key.pressed { background: var(--aura-accent); color: #fff; box-shadow: 0 0 15px var(--aura-accent); border-color: var(--aura-accent); transform: translateY(3px); }
-        .key.midi-active { background: var(--aura-midi) !important; color: #000 !important; box-shadow: 0 0 15px var(--aura-midi) !important; border-color: var(--aura-midi) !important; transform: translateY(4px); }
-
-        footer { text-align: center; font-size: 0.65rem; color: #444; padding: 4px; background: #000; letter-spacing: 1px; text-transform: uppercase; }
-
-        /* MODALS */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; overflow-y: auto; }
-        .modal-content { max-width: 480px; margin: 60px auto; padding: 30px; background: rgba(20, 20, 20, 0.9); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .close-btn { float: right; font-size: 1.8rem; cursor: pointer; color: #666; transition: 0.2s; }
-        .close-btn:hover { color: #fff; }
-        h2 { font-weight: 300; letter-spacing: 1px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-
-        .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .mode-card { background: #111; border: 1px solid #333; padding: 20px; cursor: pointer; border-radius: 10px; transition: all 0.2s; }
-        .mode-card:hover { border-color: #555; background: #151515; }
-        .mode-card.selected { border-color: var(--aura-primary); background: rgba(0, 242, 255, 0.05); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
+        .key.natural { width: 40px; height: 80px; background: #eee; color: #333; border-bottom: 4px solid #ccc; }
+        .key.natural:active, .key.natural.pressed { background: var(--neon-purple); color: #fff; border-color: var(--neon-purple); transform: scale(0.95); }
+        .key.natural.active { background: var(--neon-cyan); } /* Tuner detected */
         
-        .setting-group { margin-top: 30px; }
-        .setting-label { display: flex; justify-content: space-between; color: #ccc; margin-bottom: 10px; font-size: 0.9rem; font-weight: 500; }
-        .slider-container { display: flex; align-items: center; gap: 15px; }
-        input[type=range] { flex: 1; height: 4px; background: #333; border-radius: 2px; outline: none; -webkit-appearance: none; }
-        input[type=range]::-webkit-slider-thumb { 
-            -webkit-appearance: none; width: 18px; height: 18px; background: #fff; border-radius: 50%; cursor: pointer; 
-            box-shadow: 0 0 10px rgba(255,255,255,0.5); transition: transform 0.1s;
-        }
-        input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
-        .toggle-switch { display: flex; align-items: center; gap: 12px; cursor: pointer; margin-top: 10px; }
-        .toggle-switch input { display: none; }
-        .slider { width: 44px; height: 24px; background: #333; border-radius: 24px; position: relative; transition: 0.3s; }
-        .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #888; border-radius: 50%; transition: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); }
-        input:checked + .slider { background: var(--aura-primary); }
-        input:checked + .slider:before { transform: translateX(20px); background: #000; }
-        .dark-select { background: #111; color: #fff; border: 1px solid #333; padding: 10px; border-radius: 8px; width: 100%; margin-top: 10px; outline: none; }
+        .key.sharp { width: 32px; height: 50px; background: #333; color: #888; border-bottom: 4px solid #111; z-index: 10; }
+        .key.sharp:active, .key.sharp.pressed { background: var(--neon-purple); color: #fff; border-color: var(--neon-purple); }
+        .key.sharp.active { background: var(--neon-cyan); color: #000; }
+        .key.midi-active { background: var(--neon-green) !important; color: #000 !important; }
 
-        .tempo-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; justify-content: center;}
-        .tempo-btn { flex:1; background: #222; border: 1px solid #444; color: #ddd; border-radius: 6px; padding: 8px; font-size: 0.85rem; cursor: pointer; min-width: 50px; transition: 0.2s; }
-        .tempo-btn:hover { border-color: var(--aura-primary); color: var(--aura-primary); }
-        .tempo-val-display { font-size: 1.4rem; font-weight: 700; color: var(--aura-primary); font-family: "Courier New", monospace; }
-        .micro-btn { width: 32px; height: 32px; background: #333; border: 1px solid #555; color: white; border-radius: 50%; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; }
-        .micro-btn:active { background: #555; }
+        /* --- MODALS (Reused) --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 200; overflow-y: auto; }
+        .modal-content { max-width: 500px; margin: 50px auto; background: #151515; border: 1px solid var(--glass-border); padding: 30px; border-radius: 20px; box-shadow: 0 20px 60px #000; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .modal-title { margin: 0; font-weight: 300; letter-spacing: 1px; color: #fff; }
+        .close-icon { font-size: 2rem; cursor: pointer; color: #555; line-height: 0.8; }
+        .close-icon:hover { color: #fff; }
+        
+        /* Modal internal components reuse original structure but cleaned up */
+        .setting-row { margin-bottom: 25px; }
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 10px; color: #aaa; font-size: 0.9rem; }
+        .control-row { display: flex; align-items: center; gap: 15px; }
+        
+        /* Sliders */
+        input[type=range] { flex: 1; height: 6px; background: #333; border-radius: 3px; -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        
+        /* Selects */
+        select.dark-input { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 8px; outline: none; }
+        
+        /* Toggle */
+        .toggle-wrapper { display: flex; align-items: center; cursor: pointer; gap: 10px; }
+        .toggle-track { width: 40px; height: 22px; background: #333; border-radius: 20px; position: relative; transition: 0.3s; }
+        .toggle-dot { width: 16px; height: 16px; background: #888; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: 0.3s; }
+        input:checked + .toggle-track { background: var(--neon-cyan); }
+        input:checked + .toggle-track .toggle-dot { transform: translateX(18px); background: #000; }
+
+        /* Utility Helpers */
+        .hidden-file { display: none; }
+        #countInOverlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 15rem; font-weight: 900; color: var(--neon-cyan); opacity: 0; pointer-events: none; z-index: 150; text-shadow: 0 0 50px var(--neon-cyan); }
+        
+        /* Zoom Float */
+        .zoom-float { position: absolute; bottom: 20px; right: 20px; display: none; flex-direction: column; gap: 10px; z-index: 80; }
+        .viewport-stage.sheet-active .zoom-float { display: flex; }
+        .mini-btn { width: 36px; height: 36px; border-radius: 50%; background: #222; border: 1px solid #444; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
 <body id="appBody">
 
-    <header>
-        <div class="header-left">
+    <nav class="top-bar">
+        <div class="top-left">
             <button class="icon-btn" id="openSettings" title="Settings">⚙️</button>
-            <div class="title">AURA <span>STUDIO</span> <span id="midiStatus" title="MIDI Status">🎹</span></div>
+            <div class="brand-pill">
+                <span class="brand-logo">AURA v9</span>
+                <span id="midiStatus" class="midi-dot" title="MIDI Status">●</span>
+            </div>
         </div>
-        <div class="header-right">
-            <button class="icon-btn" id="btnTempo" title="Tempo Control" style="margin-right: 5px;">⏱️</button>
-            <button class="icon-btn" id="btnRec" title="Record">● REC</button>
-            <button class="icon-btn" id="btnExportXML" title="Save XML" style="display:none;">⬇ XML</button>
-            <button class="icon-btn" id="btnExportWAV" title="Save WAV" style="display:none;">⬇ WAV</button>
-            <div class="separator"></div>
+        <div class="top-right">
+            <button class="icon-btn primary" id="btnExportXML" title="Save XML" style="display:none;">XML</button>
+            <button class="icon-btn primary" id="btnExportWAV" title="Save WAV" style="display:none;">WAV</button>
             <button class="icon-btn" id="btnLoad" title="Load MusicXML">📂</button>
-            <button class="icon-btn" id="btnView" title="Toggle View">👁️</button>
-            <button class="icon-btn" id="btnStop" title="Stop/Reset" disabled>■</button>
-            <button class="icon-btn" id="btnPlay" title="Play/Pause" disabled>▶</button>
-            <input type="file" id="fileInput" class="hidden-input" accept="*">
+            <input type="file" id="fileInput" class="hidden-file" accept="*">
         </div>
-    </header>
+    </nav>
 
-    <div class="readout">
-        <div><span id="hz" class="hz-val">0.0</span> <span class="hz-label">HZ</span></div>
-        <div class="note-container"><span id="note" class="note-display">-</span><span id="octave" class="note-octave"></span></div>
-        <div><span id="cents" class="cents-val">0.0</span> <span class="hz-label">CENTS</span></div>
-    </div>
-
-    <div class="main-stage" id="mainStage">
+    <div class="viewport-stage" id="mainStage">
         <canvas id="tunerCanvas"></canvas>
         <div id="osmdContainer"></div>
-        <button class="start-btn" id="startBtn">⚡ 啟動 (START)</button>
+        
+        <div class="hud-capsule">
+            <div class="note-ring">
+                <span id="note" class="hud-note">-</span>
+                <span id="octave" class="hud-octave"></span>
+            </div>
+            <div class="hud-data">
+                <div class="data-tag"><span id="hz">0.0</span> Hz</div>
+                <div class="data-tag"><span id="cents">0</span> ¢</div>
+            </div>
+        </div>
+
+        <div class="start-overlay" id="startOverlay">
+            <button id="startBtn">Initialize System</button>
+        </div>
         <div id="countInOverlay">4</div>
-        <div class="zoom-controls" id="zoomControls">
-            <button class="zoom-btn" onclick="zoomOSMD(1.2)">+</button>
-            <button class="zoom-btn" onclick="zoomOSMD(0.8)">-</button>
+        <div class="zoom-float" id="zoomControls">
+            <button class="mini-btn" onclick="zoomOSMD(1.1)">+</button>
+            <button class="mini-btn" onclick="zoomOSMD(0.9)">-</button>
         </div>
     </div>
 
-    <div class="keyboard-area">
+    <div class="command-deck">
+        <div class="deck-left">
+            <div class="info-group" id="btnTempo" title="Open Rhythm Settings">
+                <span class="info-label">TEMPO</span>
+                <span class="info-val" id="bpmDisplay">120</span>
+            </div>
+            <div class="info-group" style="margin-left:15px">
+                <span class="info-label">RATE</span>
+                <span class="info-val" id="rateDisplay">1.0x</span>
+            </div>
+        </div>
+
+        <div class="deck-center">
+            <button class="transport-btn" id="btnStop" disabled title="Stop / Reset">■</button>
+            <button class="transport-btn" id="btnPlay" disabled title="Play / Pause">▶</button>
+            <button class="transport-btn danger" id="btnRec" title="Record">●</button>
+        </div>
+
+        <div class="deck-right">
+            <button class="icon-btn" id="btnView" title="Toggle Sheet View">👁️</button>
+            <button class="icon-btn" onclick="toggleKeyboard()" title="Toggle Keyboard" style="margin-left:8px;">🎹</button>
+        </div>
+    </div>
+
+    <div class="keyboard-drawer" id="keyboardDrawer">
         <div class="octave-scroller" id="octaveScroller">
-            <div class="pill" data-oct="1">-3 (C1)</div>
-            <div class="pill" data-oct="2">-2 (C2)</div>
-            <div class="pill" data-oct="3">-1 (C3)</div>
-            <div class="pill active" data-oct="4">Default (C4)</div>
-            <div class="pill" data-oct="5">+1 (C5)</div>
-            <div class="pill" data-oct="6">+2 (C6)</div>
-            <div class="pill" data-oct="7">+3 (C7)</div>
+            <div class="pill" data-oct="1">C1</div>
+            <div class="pill" data-oct="2">C2</div>
+            <div class="pill" data-oct="3">C3</div>
+            <div class="pill active" data-oct="4">C4</div>
+            <div class="pill" data-oct="5">C5</div>
+            <div class="pill" data-oct="6">C6</div>
         </div>
-
-        <div class="keys-main-container">
+        <div class="keys-container">
             <div class="key-group">
-                <div class="sharps-row">
-                    <div class="key sharp" data-note="C#">C#</div>
-                    <div class="key sharp" data-note="D#">D#</div>
+                <div class="sharps">
+                    <div class="key sharp" data-note="C#"></div>
+                    <div class="key sharp" data-note="D#"></div>
                 </div>
-                <div class="naturals-row">
-                    <div class="key" data-note="C">C</div>
-                    <div class="key" data-note="D">D</div>
-                    <div class="key" data-note="E">E</div>
+                <div class="naturals">
+                    <div class="key natural" data-note="C">C</div>
+                    <div class="key natural" data-note="D">D</div>
+                    <div class="key natural" data-note="E">E</div>
                 </div>
             </div>
             <div class="key-group">
-                <div class="sharps-row">
-                    <div class="key sharp" data-note="F#">F#</div>
-                    <div class="key sharp" data-note="G#">G#</div>
-                    <div class="key sharp" data-note="A#">A#</div>
+                <div class="sharps">
+                    <div class="key sharp" data-note="F#"></div>
+                    <div class="key sharp" data-note="G#"></div>
+                    <div class="key sharp" data-note="A#"></div>
                 </div>
-                <div class="naturals-row">
-                    <div class="key" data-note="F">F</div>
-                    <div class="key" data-note="G">G</div>
-                    <div class="key" data-note="A">A</div>
-                    <div class="key" data-note="B">B</div>
+                <div class="naturals">
+                    <div class="key natural" data-note="F">F</div>
+                    <div class="key natural" data-note="G">G</div>
+                    <div class="key natural" data-note="A">A</div>
+                    <div class="key natural" data-note="B">B</div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <footer>豐狂出品 • v8.9 Virtuoso Edition</footer>
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" id="closeSettings">&times;</span>
-            <h2 style="color:#fff;">系統設定 (Settings)</h2>
-            <div class="mode-options">
-                <div class="mode-card selected" onclick="setMode('turbo')" id="modeTurbo">
-                    <strong style="color:#fff; font-size:1.1rem;">🎹 極速模式</strong><br><small style="color:#888">低延遲 (適合鋼琴/吉他)</small>
-                </div>
-                <div class="mode-card" onclick="setMode('bass')" id="modeBass">
-                    <strong style="color:#fff; font-size:1.1rem;">🐢 低音模式</strong><br><small style="color:#888">高精準 (適合貝斯)</small>
-                </div>
+            <div class="modal-header">
+                <h2 class="modal-title">SYSTEM CONFIG</h2>
+                <span class="close-icon" id="closeSettings">&times;</span>
             </div>
             
-            <div class="setting-group">
-                <div class="setting-label">🎻 樂器預設 (Instrument Preset)</div>
-                <select id="instPresetSelect" class="dark-select">
-                    <option value="chromatic">Chromatic (全音域)</option>
-                    <option value="violin">Violin (G-D-A-E)</option>
-                    <option value="viola">Viola (C-G-D-A)</option>
-                    <option value="cello">Cello (C-G-D-A)</option>
-                    <option value="doublebass">Double Bass (E-A-D-G)</option>
-                    <option value="erhu">Erhu 二胡 (D-A)</option>
-                    <option value="ukulele">Ukulele (G-C-E-A)</option>
-                    <option value="guitar">Guitar (E-A-D-G-B-E)</option>
+            <div class="setting-row">
+                <div class="label-row"><span>Audio Mode</span></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <button class="pill active" id="modeTurbo" onclick="setMode('turbo')" style="text-align:center; padding:10px;">⚡ Turbo (Low Latency)</button>
+                    <button class="pill" id="modeBass" onclick="setMode('bass')" style="text-align:center; padding:10px;">🐢 Bass (Precision)</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="label-row"><span>Instrument Preset</span></div>
+                <select id="instPresetSelect" class="dark-input">
+                    <option value="chromatic">Chromatic (All)</option>
+                    <option value="violin">Violin</option>
+                    <option value="cello">Cello</option>
+                    <option value="guitar">Guitar</option>
+                    <option value="ukulele">Ukulele</option>
                 </select>
             </div>
 
-            <div class="setting-group">
-                <div class="setting-label">🔊 音量 (Vol) <span id="volValueDisplay" class="setting-val">150%</span></div>
-                <div class="slider-container">
-                    <span style="font-size:1.2rem; color:#666;">🔈</span>
-                    <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5">
-                    <span style="font-size:1.2rem; color:#fff;">🔊</span>
-                </div>
+            <div class="setting-row">
+                <div class="label-row"><span>Master Volume</span> <span id="volValueDisplay">150%</span></div>
+                <div class="control-row"><input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5"></div>
             </div>
-            <div class="setting-group">
-                <div class="setting-label">🎹 A4 基準音 <span id="a4Display" class="setting-val">440 Hz</span></div>
-                <div class="slider-container">
-                    <span style="color:#666; font-size:0.8rem;">430</span>
-                    <input type="range" id="a4Slider" min="430" max="450" step="1" value="440">
-                    <span style="color:#666; font-size:0.8rem;">450</span>
-                </div>
+
+            <div class="setting-row">
+                <div class="label-row"><span>A4 Ref</span> <span id="a4Display">440 Hz</span></div>
+                <div class="control-row"><input type="range" id="a4Slider" min="430" max="450" step="1" value="440"></div>
             </div>
-            <div class="setting-group">
-                <div class="setting-label">🎯 目標音鎖定 (Target Lock)</div>
-                <label class="toggle-switch">
+
+            <div class="setting-row">
+                <div class="label-row"><span>Target Lock</span></div>
+                <label class="toggle-wrapper">
                     <input type="checkbox" id="targetModeToggle">
-                    <div class="slider"></div>
-                    <span style="font-size:0.85rem; color:#ccc;">啟用鎖定</span>
+                    <div class="toggle-track"><div class="toggle-dot"></div></div>
+                    <span style="font-size:0.8rem; color:#888;">Enable</span>
                 </label>
-                <select id="targetNoteSelect" class="dark-select" disabled></select>
+                <select id="targetNoteSelect" class="dark-input" style="margin-top:10px;" disabled></select>
             </div>
-            <div class="setting-group">
-                <div class="setting-label">🚪 噪音門檻 (Gate) <span id="gateDisplay" class="setting-val">Low</span></div>
-                <div class="slider-container">
-                    <input type="range" id="gateSlider" min="0.001" max="0.05" step="0.001" value="0.003">
+
+             <div class="setting-row">
+                <div class="label-row"><span>Gate / Smoothing</span></div>
+                <div class="control-row">
+                    <span style="font-size:0.8rem">G:</span> <input type="range" id="gateSlider" min="0.001" max="0.05" step="0.001" value="0.003">
+                    <span id="gateDisplay" style="width:30px; font-size:0.8rem">3.0</span>
                 </div>
-            </div>
-            <div class="setting-group">
-                <div class="setting-label">🌊 穩定度 (Smooth) <span id="smoothDisplay" class="setting-val">Balanced</span></div>
-                <div class="slider-container">
-                    <input type="range" id="smoothSlider" min="0.1" max="0.9" step="0.1" value="0.3">
+                <div class="control-row" style="margin-top:5px;">
+                    <span style="font-size:0.8rem">S:</span> <input type="range" id="smoothSlider" min="0.1" max="0.9" step="0.1" value="0.3">
+                    <span id="smoothDisplay" style="width:30px; font-size:0.8rem">30%</span>
                 </div>
             </div>
         </div>
@@ -392,91 +386,74 @@
 
     <div id="tempoModal" class="modal">
         <div class="modal-content">
-            <span class="close-btn" id="closeTempo">&times;</span>
-            <h2 style="color:var(--aura-primary);">⏱️ 速度與節拍 (Rhythm)</h2>
-            
-            <div class="setting-group" style="margin-bottom: 20px;">
-                <div class="setting-label">
-                    <span>🥁 節拍器開關</span>
-                    <span id="sigDisplay" style="color:var(--aura-primary); font-weight:bold;">4/4 拍</span>
+            <div class="modal-header">
+                <h2 class="modal-title" style="color:var(--neon-cyan)">RHYTHM ENGINE</h2>
+                <span class="close-icon" id="closeTempo">&times;</span>
+            </div>
+
+            <div class="setting-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:0.9rem; color:#fff;">Metronome Click</div>
+                    <div style="font-size:0.7rem; color:#666;" id="sigDisplay">4/4</div>
                 </div>
-                <label class="toggle-switch">
+                <label class="toggle-wrapper">
                     <input type="checkbox" id="metroToggle">
-                    <div class="slider"></div>
-                    <span style="font-size:0.85rem; color:#ccc;">開啟重音 Click</span>
+                    <div class="toggle-track"><div class="toggle-dot"></div></div>
                 </label>
             </div>
 
-            <div class="setting-group" style="margin-bottom: 20px;">
-                <div class="setting-label">
-                    <span>🏁 預備拍 (Count-In)</span>
-                </div>
-                <label class="toggle-switch">
+            <div class="setting-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <div><div style="font-size:0.9rem; color:#fff;">Count-In (Pre-roll)</div></div>
+                <label class="toggle-wrapper">
                     <input type="checkbox" id="countInToggle">
-                    <div class="slider"></div>
-                    <span style="font-size:0.85rem; color:#ccc;">開始前先響一小節</span>
+                    <div class="toggle-track"><div class="toggle-dot"></div></div>
                 </label>
             </div>
 
-            <div class="setting-group" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--glass-border);">
-                <div class="setting-label">
-                    <span style="color: var(--aura-primary);">⚡ 強拍穿透力 (Acc. Pitch)</span>
-                    <span id="accentPitchDisplay" style="color:#fff; font-family: monospace;">1600 Hz</span>
+            <div class="setting-row" style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px;">
+                <div class="label-row"><span>Rate Control</span> <span id="origBpmDisplay" style="color:#666;">Ref: 120</span></div>
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
+                    <button class="pill" onclick="setSpeed(0.5)">0.5x</button>
+                    <button class="pill" onclick="setSpeed(1.0)">1.0x</button>
+                    <button class="pill" onclick="setSpeed(1.5)">1.5x</button>
                 </div>
-                <div class="slider-container">
-                    <input type="range" id="accentPitchSlider" min="800" max="3000" step="100" value="1600">
-                </div>
-                
-                <div class="setting-label" style="margin-top: 15px;">
-                    <span style="color: var(--aura-primary);">⚖️ 強弱比例 (Acc. Ratio)</span>
-                    <span id="accentRatioDisplay" style="color:#fff; font-family: monospace;">1.5x</span>
-                </div>
-                <div class="slider-container">
-                    <input type="range" id="accentRatioSlider" min="1.0" max="3.0" step="0.1" value="1.5">
-                </div>
+                <input type="range" id="rateSlider" min="0.2" max="2.0" step="0.01" value="1.0">
             </div>
 
-            <p style="color:#888; font-size:0.85rem; margin-top: 25px; margin-bottom:15px; border-left: 2px solid var(--aura-primary); padding-left: 10px;">
-                原始速度: <span id="origBpmDisplay" style="color:#fff; font-weight:bold;">120</span> BPM
-            </p>
-
-            <div class="tempo-section">
-                <div class="setting-label">
-                    <span>A. 倍率 (Rate)</span>
-                    <span id="rateDisplay" class="tempo-val-display">1.00x</span>
-                </div>
-                <div class="tempo-presets">
-                    <button class="tempo-btn" onclick="setSpeed(0.5)">0.5x</button>
-                    <button class="tempo-btn" onclick="setSpeed(0.75)">0.75x</button>
-                    <button class="tempo-btn" onclick="setSpeed(1.0)">1.0x</button>
-                    <button class="tempo-btn" onclick="setSpeed(1.25)">1.25x</button>
-                    <button class="tempo-btn" onclick="setSpeed(1.5)">1.5x</button>
-                </div>
-                <div class="slider-container">
-                    <button class="micro-btn" onclick="adjustRate(-0.02)">-</button>
-                    <input type="range" id="rateSlider" min="0.2" max="2.0" step="0.01" value="1.0">
-                    <button class="micro-btn" onclick="adjustRate(0.02)">+</button>
-                </div>
-            </div>
-
-            <hr style="border:0; border-top:1px solid #333; margin:25px 0;">
-
-            <div class="tempo-section">
-                <div class="setting-label">
-                    <span>B. 節拍 (BPM)</span>
-                    <span id="bpmDisplay" class="tempo-val-display">120 BPM</span>
-                </div>
-                <div class="tempo-presets" id="bpmPresets"></div>
-                <div class="slider-container">
-                    <button class="micro-btn" onclick="adjustBPM(-2)">-</button>
+            <div class="setting-row">
+                <div class="label-row"><span>Manual BPM Override</span></div>
+                <div id="bpmPresets" style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;"></div>
+                <div class="control-row">
+                    <button class="mini-btn" onclick="adjustBPM(-1)">-</button>
                     <input type="range" id="bpmSlider" min="20" max="240" step="1" value="120">
-                    <button class="micro-btn" onclick="adjustBPM(2)">+</button>
+                    <button class="mini-btn" onclick="adjustBPM(1)">+</button>
                 </div>
+            </div>
+            
+            <div class="setting-row">
+                 <div class="label-row"><span>Click Sound</span> <span id="accentPitchDisplay">1600 Hz</span></div>
+                 <input type="range" id="accentPitchSlider" min="800" max="3000" step="100" value="1600">
+                 <div class="label-row" style="margin-top:10px;"><span>Accent Ratio</span> <span id="accentRatioDisplay">1.5x</span></div>
+                 <input type="range" id="accentRatioSlider" min="1.0" max="3.0" step="0.1" value="1.5">
             </div>
         </div>
     </div>
 
     <script>
+        // UI Logic for New Layout
+        function toggleKeyboard() {
+            const drawer = document.getElementById('keyboardDrawer');
+            const btn = document.querySelector('button[title="Toggle Keyboard"]');
+            if(drawer.classList.contains('collapsed')) {
+                drawer.classList.remove('collapsed');
+                btn.style.color = 'var(--neon-cyan)';
+            } else {
+                drawer.classList.add('collapsed');
+                btn.style.color = '#fff';
+            }
+        }
+        
+        // --- ORIGINAL LOGIC BELOW (No Deletions) ---
         document.addEventListener('DOMContentLoaded', () => {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
             let analyser, micSource, gainNode, dataArray, mediaStream;
@@ -703,11 +680,11 @@
                 ui.rateDisplay.textContent = playbackSpeed.toFixed(2) + "x";
                 ui.bpmSlider.min = Math.floor(originalBPM * 0.2); ui.bpmSlider.max = Math.floor(originalBPM * 2.0);
                 ui.bpmSlider.value = currentBPM;
-                ui.bpmDisplay.textContent = currentBPM + " BPM";
-                ui.origBpmDisplay.textContent = originalBPM;
+                ui.bpmDisplay.textContent = currentBPM; // UI Change
+                ui.origBpmDisplay.textContent = "Ref: " + originalBPM; // UI Change
                 ui.metroToggle.checked = isMetroEnabled;
                 ui.countInToggle.checked = isCountInEnabled;
-                ui.sigDisplay.textContent = `${currentBeatsPerMeasure}/${currentBeatType} 拍`;
+                ui.sigDisplay.textContent = `${currentBeatsPerMeasure}/${currentBeatType}`;
                 ui.accentPitchSlider.value = accentPitch;
                 ui.accentPitchDisplay.textContent = accentPitch + " Hz";
                 ui.accentRatioSlider.value = accentRatio;
@@ -740,7 +717,7 @@
                 [0.5, 0.75, 1.0, 1.25, 1.5].forEach(r => {
                     const b = Math.round(originalBPM * r);
                     const btn = document.createElement('button');
-                    btn.className = "tempo-btn"; btn.textContent = b; btn.onclick = () => setBPM(b);
+                    btn.className = "pill"; btn.textContent = b; btn.onclick = () => setBPM(b); // UI Change to 'pill'
                     ui.bpmPresets.appendChild(btn);
                 });
             }
@@ -748,7 +725,7 @@
             ui.btnLoad.onclick = () => ui.fileInput.click();
             ui.fileInput.onchange = async (e) => {
                 const f = e.target.files[0]; if(!f) return;
-                ui.btnLoad.style.color = "var(--aura-primary)";
+                ui.btnLoad.style.color = "var(--neon-cyan)";
                 try {
                     let xmlContent = "";
                     if (f.name.toLowerCase().endsWith('.mxl')) {
@@ -777,7 +754,17 @@
 
             ui.btnPlay.onclick = () => { if (audioCtx.state === 'suspended') audioCtx.resume(); if (playbackManager.isPlaying) { playbackManager.pause(); } else { playbackManager.play(lastParsedDoc || lastLoadedXML); } };
             ui.btnStop.onclick = () => { playbackManager.stop(); };
-            ui.btnView.onclick = () => { isSheetMode = !isSheetMode; if (isSheetMode) { ui.btnView.classList.add('sheet-active'); ui.btnView.textContent = "🎼"; ui.mainStage.classList.add('sheet-mode'); } else { ui.btnView.classList.remove('sheet-active'); ui.btnView.textContent = "👁️"; ui.mainStage.classList.remove('sheet-mode'); if (!isRunning) ui.startBtn.style.display = 'block'; } };
+            ui.btnView.onclick = () => { 
+                isSheetMode = !isSheetMode; 
+                if (isSheetMode) { 
+                    ui.btnView.textContent = "🎼"; 
+                    ui.mainStage.classList.add('sheet-active'); // UI Change class name
+                } else { 
+                    ui.btnView.textContent = "👁️"; 
+                    ui.mainStage.classList.remove('sheet-active'); 
+                    if (!isRunning) document.getElementById('startOverlay').style.display = 'flex'; // UI Change
+                } 
+            };
 
             // === RECORDING (XML & WAV) ===
             let isRecording = false; let recordedNotes = []; let currentNoteEvent = null; let noteStartTime = 0;
@@ -785,7 +772,8 @@
                 isRecording = !isRecording;
                 if (isRecording) { 
                     recordedNotes = []; currentNoteEvent = null; 
-                    ui.btnRec.classList.add('recording'); ui.btnRec.textContent = "● REC (0)"; 
+                    ui.btnRec.classList.add('recording'); 
+                    // ui.btnRec.textContent = "● REC (0)"; // Removed text change to keep icon clean
                     ui.btnExportXML.style.display = 'none'; ui.btnExportWAV.style.display = 'none';
                     // Start WAV Recording
                     if (mediaStream) {
@@ -797,14 +785,15 @@
                 }
                 else { 
                     if(currentNoteEvent) recordedNotes.push({...currentNoteEvent, duration: Date.now()-noteStartTime}); 
-                    ui.btnRec.classList.remove('recording'); ui.btnRec.textContent = "● REC"; 
-                    if(recordedNotes.length) ui.btnExportXML.style.display = 'inline-flex';
+                    ui.btnRec.classList.remove('recording'); 
+                    // ui.btnRec.textContent = "● REC"; 
+                    if(recordedNotes.length) ui.btnExportXML.style.display = 'inline-flex'; // UI Change flex
                     // Stop WAV Recording
                     if (mediaRecorder && mediaRecorder.state !== "inactive") {
                         mediaRecorder.stop();
                         mediaRecorder.onstop = () => {
                             wavBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            ui.btnExportWAV.style.display = 'inline-flex';
+                            ui.btnExportWAV.style.display = 'inline-flex'; // UI Change flex
                         };
                     }
                 }
@@ -812,11 +801,11 @@
             function processRecording(detectedNote, detectedOctave) {
                 const now = Date.now();
                 if (!detectedNote) {
-                    if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); ui.btnRec.textContent = `● REC (${recordedNotes.length})`; currentNoteEvent = null; }
+                    if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); /* ui.btnRec.textContent = `● REC (${recordedNotes.length})`; */ currentNoteEvent = null; }
                     return;
                 }
                 if (currentNoteEvent && detectedNote === currentNoteEvent.note && detectedOctave === currentNoteEvent.octave) return;
-                if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); ui.btnRec.textContent = `● REC (${recordedNotes.length})`; }
+                if (currentNoteEvent) { recordedNotes.push({...currentNoteEvent, duration: now - noteStartTime}); /* ui.btnRec.textContent = `● REC (${recordedNotes.length})`; */ }
                 currentNoteEvent = {note: detectedNote, octave: detectedOctave}; noteStartTime = now;
             }
             ui.btnExportXML.onclick = () => {
@@ -876,14 +865,14 @@
                 accentPitch = appSettings.accentPitch;
                 accentRatio = appSettings.accentRatio;
                 updateTempoUI();
-                if(appSettings.targetMode) ui.appBody.classList.add('target-mode-active'); else ui.appBody.classList.remove('target-mode-active');
+                if(appSettings.targetMode) ui.appBody.classList.add('target-active'); else ui.appBody.classList.remove('target-active'); // UI class change
             }
             applyUI();
 
             ui.a4Slider.addEventListener('input', function() { appSettings.a4 = parseInt(this.value); ui.a4Display.innerText = appSettings.a4 + " Hz"; saveSettings(); });
             ui.gateSlider.addEventListener('input', function() { appSettings.gate = parseFloat(this.value); ui.gateDisplay.innerText = (appSettings.gate * 1000).toFixed(1); saveSettings(); });
             ui.smoothSlider.addEventListener('input', function() { appSettings.smoothing = parseFloat(this.value); ui.smoothDisplay.innerText = Math.round(appSettings.smoothing * 100) + "%"; saveSettings(); });
-            ui.targetToggle.addEventListener('change', function() { appSettings.targetMode = this.checked; ui.targetSelect.disabled = !this.checked; if (this.checked) ui.appBody.classList.add('target-mode-active'); else ui.appBody.classList.remove('target-mode-active'); saveSettings(); });
+            ui.targetToggle.addEventListener('change', function() { appSettings.targetMode = this.checked; ui.targetSelect.disabled = !this.checked; if (this.checked) ui.appBody.classList.add('target-active'); else ui.appBody.classList.remove('target-active'); saveSettings(); });
             ui.targetSelect.addEventListener('change', function() { appSettings.targetNoteIndex = parseInt(this.value); saveSettings(); });
             
             const settingsModal = document.getElementById('settingsModal');
@@ -894,7 +883,7 @@
             document.getElementById('closeTempo').onclick = () => tempoModal.style.display = 'none';
 
             ui.startBtn.onclick = async function() {
-                this.style.display = 'none';
+                document.getElementById('startOverlay').style.display = 'none'; // UI Change
                 if (audioCtx.state === 'suspended') await audioCtx.resume();
                 try {
                     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
@@ -902,7 +891,7 @@
                     gainNode = audioCtx.createGain(); gainNode.gain.value = 5.0; 
                     micSource = audioCtx.createMediaStreamSource(mediaStream); micSource.connect(gainNode); gainNode.connect(analyser); 
                     setMode('turbo'); isRunning = true; update();
-                } catch (e) { alert("Mic Error: " + e.message); this.style.display = 'block'; }
+                } catch (e) { alert("Mic Error: " + e.message); document.getElementById('startOverlay').style.display = 'flex'; }
             };
 
             function playMusicXML(input, startOffset = 0) {
@@ -1075,7 +1064,7 @@
                 return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
             }
             
-            window.setMode = (mode) => { if (mode === 'turbo') { currentFFTSize = 2048; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card selected'; document.getElementById('modeBass').className = 'mode-card'; } else { currentFFTSize = 4096; downsampleStep = 2; document.getElementById('modeTurbo').className = 'mode-card'; document.getElementById('modeBass').className = 'mode-card selected'; } if (analyser) { analyser.fftSize = currentFFTSize; dataArray = new Float32Array(analyser.fftSize); } };
+            window.setMode = (mode) => { if (mode === 'turbo') { currentFFTSize = 2048; downsampleStep = 2; document.getElementById('modeTurbo').className = 'pill active'; document.getElementById('modeBass').className = 'pill'; } else { currentFFTSize = 4096; downsampleStep = 2; document.getElementById('modeTurbo').className = 'pill'; document.getElementById('modeBass').className = 'pill active'; } if (analyser) { analyser.fftSize = currentFFTSize; dataArray = new Float32Array(analyser.fftSize); } };
             
             function startTone(noteName, octaveOverride = null) { 
                 if (audioCtx.state === 'suspended') audioCtx.resume(); 
@@ -1093,7 +1082,7 @@
             }
             function stopTone() { if (toneOsc && toneGain) { const stopTime = audioCtx.currentTime + 0.1; toneGain.gain.cancelScheduledValues(audioCtx.currentTime); toneGain.gain.setValueAtTime(toneGain.gain.value, audioCtx.currentTime); toneGain.gain.linearRampToValueAtTime(0, stopTime); toneOsc.stop(stopTime); const oldOsc = toneOsc; const oldGain = toneGain; setTimeout(() => { oldOsc.disconnect(); oldGain.disconnect(); }, 200); toneOsc = null; toneGain = null; } }
             
-            function stopMic() { if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; } isRunning = false; if (!isSheetMode) { ui.startBtn.style.display = 'block'; ui.startBtn.innerText = "⚡ 重新啟動 (Resume)"; } }
+            function stopMic() { if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; } isRunning = false; if (!isSheetMode) { document.getElementById('startOverlay').style.display = 'flex'; /* ui.startBtn.innerText = "⚡ Resume"; */ } }
             document.addEventListener('visibilitychange', () => { if (document.hidden) { stopMic(); playbackManager.pause(); } });
 
             ui.keys.forEach(key => {
