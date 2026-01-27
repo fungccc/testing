@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AURA Studio v10.1 - Omni Station (Fix)</title>
+    <title>AURA Studio v10.1 - Omni Station</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.8/build/opensheetmusicdisplay.min.js"></script>
@@ -52,6 +52,7 @@
         }
         .icon-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.05); }
         .icon-btn.active { border-color: var(--neon-cyan); color: var(--neon-cyan); background: rgba(0,242,255,0.1); }
+        .icon-btn.primary { color: var(--neon-cyan); border-color: rgba(0,242,255,0.3); }
 
         /* --- STAGE --- */
         .viewport-stage { flex: 1; position: relative; overflow: hidden; width: 100%; }
@@ -79,8 +80,7 @@
         }
         .note-ring.perfect { border-color: var(--neon-green); box-shadow: 0 0 40px rgba(0, 255, 157, 0.4); }
         .note-ring.good { border-color: #ffd700; }
-        .note-ring.target { border-color: var(--neon-cyan); box-shadow: 0 0 30px rgba(0, 242, 255, 0.3); }
-
+        
         .hud-note { font-size: 5rem; font-weight: 200; line-height: 1; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
         .hud-octave { font-size: 1.5rem; position: absolute; top: 30px; right: 25px; color: var(--text-mute); }
         .hud-data { display: flex; gap: 10px; margin-top: 10px; }
@@ -108,19 +108,16 @@
         .transport-btn.playing { background: rgba(255,0,85,0.2); color: var(--neon-pink); border-color: var(--neon-pink); }
         .transport-btn.recording { background: var(--neon-pink); color: #fff; animation: pulse 1.5s infinite; }
         
-        .loop-controls { display: flex; gap: 4px; background: #111; padding: 4px; border-radius: 12px; border: 1px solid #333; margin-right: 10px; }
-        .loop-btn { 
-            width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: #555; 
-            font-size: 0.7rem; font-weight: bold; cursor: pointer; 
-        }
+        .loop-controls, .track-controls { display: flex; gap: 4px; background: #111; padding: 4px; border-radius: 12px; border: 1px solid #333; margin-right: 10px; }
+        .loop-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: transparent; color: #555; font-size: 0.7rem; font-weight: bold; cursor: pointer; }
         .loop-btn.set { color: var(--neon-cyan); background: rgba(0, 242, 255, 0.1); }
         .loop-btn.active { color: #000; background: var(--neon-cyan); }
 
-        .track-controls { display: flex; gap: 6px; background: #111; padding: 4px; border-radius: 20px; border: 1px solid #333; margin-right: 10px;}
         .track-btn { width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent; color: #444; cursor: pointer; display: flex; align-items: center; justify-content: center;}
         .track-btn.active#btnToggleMetro { color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan); }
         .track-btn.active#btnToggleMelody { color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple); }
 
+        /* --- KEYBOARD DRAWER --- */
         .keyboard-drawer {
             background: #080808; border-top: 1px solid #222; overflow: hidden; height: 0; transition: height 0.3s;
             display: flex; flex-direction: column;
@@ -141,10 +138,11 @@
         .key.natural { width: 38px; height: 70px; background: #eee; color: #333; border-bottom: 4px solid #ccc; font-size: 0.8rem; }
         .key.sharp { width: 28px; height: 45px; background: #222; color: #fff; border-bottom: 4px solid #000; font-size: 0.7rem; }
         .key:active, .key.pressed { transform: translateY(2px); border-bottom-width: 2px; }
-        .key.active { background: var(--neon-cyan) !important; color: #000 !important; } 
+        .key.active { background: var(--neon-cyan) !important; color: #000 !important; }
         .key.drone { background: var(--neon-orange) !important; color: #000 !important; box-shadow: 0 0 15px var(--neon-orange); animation: drone-pulse 2s infinite; }
         @keyframes drone-pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
+        /* --- MODALS --- */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 200; }
         .modal-content { max-width: 450px; margin: 40px auto; background: #151515; border: 1px solid var(--glass-border); padding: 25px; border-radius: 20px; height: 85vh; overflow-y: auto; }
         .setting-row { margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; }
@@ -154,6 +152,7 @@
         
         .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(5px); z-index:300; display:flex; justify-content:center; align-items:center; }
         #startBtn { padding: 15px 40px; border-radius: 40px; border: none; background: var(--neon-cyan); font-size: 1.2rem; font-weight: 800; cursor: pointer; box-shadow: 0 0 30px var(--neon-cyan); }
+        #startBtn:active { transform: scale(0.95); }
 
         .hidden-file { display: none; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,0,85,0.7); } 100% { box-shadow: 0 0 0 10px rgba(255,0,85,0); } }
@@ -223,14 +222,11 @@
                 <button class="loop-btn" id="btnLoopB" title="Set End">B</button>
                 <button class="loop-btn" id="btnLoopToggle" title="Loop On/Off">↻</button>
             </div>
-
             <div class="track-controls">
                 <button class="track-btn active" id="btnToggleMetro">🥁</button>
                 <button class="track-btn active" id="btnToggleMelody">🎹</button>
             </div>
-
             <div style="width:1px; height:30px; background:#333; margin:0 10px;"></div>
-
             <button class="transport-btn" id="btnStop" disabled>■</button>
             <button class="transport-btn" id="btnPlay" disabled>▶</button>
             <button class="transport-btn" id="btnRec" style="color:var(--neon-pink);">●</button>
@@ -249,7 +245,7 @@
             <button class="pill active" data-oct="4">C4</button>
             <button class="pill" data-oct="5">C5</button>
             <button class="pill" data-oct="6">C6</button>
-            <span style="color:#444; font-size:0.6rem; align-self:center; margin-left:10px;">TIP: Click Key to Toggle Drone</span>
+            <span style="color:#444; font-size:0.6rem; align-self:center; margin-left:10px;">Click Key to Drone</span>
         </div>
         <div class="keys-container">
             <div class="key-group">
@@ -276,44 +272,24 @@
             <h2 style="color:#fff; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px; display:flex; justify-content:space-between;">
                 SYSTEM CONFIG <span id="closeSettings" style="cursor:pointer;">&times;</span>
             </h2>
-
             <div class="setting-row">
-                <div class="label-row"><span>🎼 Transpose (Semitones)</span> <span id="transDisplay" style="color:var(--neon-cyan)">0</span></div>
+                <div class="label-row"><span>🎼 Transpose</span> <span id="transDisplay" style="color:var(--neon-cyan)">0</span></div>
                 <div style="display:flex; gap:10px;">
                     <button class="pill" onclick="setTranspose(-1)">-1</button>
                     <button class="pill" onclick="setTranspose(0)">Reset</button>
                     <button class="pill" onclick="setTranspose(1)">+1</button>
                 </div>
             </div>
-
             <div class="setting-row">
-                <div class="label-row"><span>🔊 Space Reverb</span> <span id="reverbStatus" style="color:#888">Off</span></div>
+                <div class="label-row"><span>🔊 Reverb</span> <span id="reverbStatus" style="color:#888">Off</span></div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="pill" id="btnReverbToggle" onclick="toggleReverb()">Enable Reverb</button>
+                    <button class="pill" id="btnReverbToggle" onclick="toggleReverb()">Enable</button>
                     <input type="range" id="reverbMix" min="0" max="1" step="0.1" value="0.4" style="flex:1" disabled>
                 </div>
             </div>
-
             <div class="setting-row">
-                <div class="label-row"><span>Master Volume</span> <span id="volValueDisplay">100%</span></div>
-                <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.0">
-            </div>
-            <div class="setting-row">
-                <div class="label-row"><span>A4 Reference</span> <span id="a4Display">440 Hz</span></div>
-                <input type="range" id="a4Slider" min="430" max="450" step="1" value="440">
-            </div>
-             <div class="setting-row">
-                <div class="label-row"><span>Gate (Sensitivity)</span> <span id="gateDisplay">Low</span></div>
-                <input type="range" id="gateSlider" min="0.001" max="0.05" step="0.001" value="0.003">
-            </div>
-             <div class="setting-row">
-                <div class="label-row"><span>Smoothing (Stability)</span> <span id="smoothDisplay">Balanced</span></div>
-                <input type="range" id="smoothSlider" min="0.1" max="0.9" step="0.1" value="0.3">
-            </div>
-            <div class="setting-row">
-                <div class="label-row"><span>Target Lock (Visual)</span></div>
-                <input type="checkbox" id="targetModeToggle"> <span style="font-size:0.8rem; color:#888;">Enable</span>
-                <select id="targetNoteSelect" style="background:#000; color:#fff; border:1px solid #333; padding:5px; margin-top:5px; width:100%;" disabled></select>
+                <div class="label-row"><span>Volume</span> <span id="volValueDisplay">150%</span></div>
+                <input type="range" id="volSlider" min="0.1" max="2.0" step="0.1" value="1.5">
             </div>
         </div>
     </div>
@@ -321,7 +297,6 @@
     <div id="tempoModal" class="modal">
         <div class="modal-content">
             <h2 style="color:var(--neon-cyan); margin-bottom:20px;">RHYTHM ENGINE <span id="closeTempo" style="float:right; cursor:pointer;">&times;</span></h2>
-            
             <div class="setting-row">
                 <div class="label-row"><span>Metronome</span> <span id="sigDisplay">4/4</span></div>
                 <input type="checkbox" id="metroToggle"> Enable Click
@@ -330,9 +305,8 @@
                 <div class="label-row"><span>Count-In</span></div>
                 <input type="checkbox" id="countInToggle"> Pre-roll 1 Bar
             </div>
-
             <div class="setting-row">
-                <div class="label-row"><span>Rate (0.1x - 10.0x)</span> <span id="origBpmDisplay">Ref: 120</span></div>
+                <div class="label-row"><span>Rate</span> <span id="origBpmDisplay">Ref: 120</span></div>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
                     <button class="pill" onclick="setSpeed(0.5)">0.5x</button>
                     <button class="pill" onclick="setSpeed(1.0)">1.0x</button>
@@ -342,7 +316,6 @@
                 </div>
                 <input type="range" id="rateSlider" min="0.1" max="10.0" step="0.1" value="1.0">
             </div>
-
             <div class="setting-row">
                 <div class="label-row"><span>BPM</span></div>
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -356,44 +329,42 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Global Definitions
+            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+            
+            // Audio Nodes
             let analyser, micSource, gainNode, dataArray, mediaStream;
-            let masterGain, reverbNode, reverbGain; 
-            let toneOsc = null, toneGain = null;
+            let masterGain = audioCtx.createGain(); masterGain.gain.value = 1.0;
+            let reverbNode = audioCtx.createConvolver();
+            let reverbGain = audioCtx.createGain(); reverbGain.gain.value = 0.0;
             let droneOsc = null, droneGain = null;
-            let isRunning = false;
+            let backingBuffer = null, backingSource = null, backingGain = null;
             
-            // Reverb IR
-            function createImpulseResponse(duration, decay, reverse) {
-                const sampleRate = audioCtx.sampleRate;
-                const length = sampleRate * duration;
-                const impulse = audioCtx.createBuffer(2, length, sampleRate);
-                const left = impulse.getChannelData(0);
-                const right = impulse.getChannelData(1);
-                for (let i = 0; i < length; i++) {
-                    const n = reverse ? length - i : i;
-                    left[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
-                    right[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
-                }
-                return impulse;
-            }
-
-            // Audio Graph Init
-            masterGain = audioCtx.createGain(); masterGain.gain.value = 1.0;
-            reverbNode = audioCtx.createConvolver();
-            reverbGain = audioCtx.createGain(); reverbGain.gain.value = 0.0;
-            reverbNode.buffer = createImpulseResponse(2.0, 2.0, false);
-            
+            // Routing
             masterGain.connect(audioCtx.destination);
             masterGain.connect(reverbNode);
             reverbNode.connect(reverbGain);
             reverbGain.connect(audioCtx.destination);
 
+            // Reverb Impulse
+            function createImpulseResponse(duration, decay) {
+                const len = audioCtx.sampleRate * duration;
+                const imp = audioCtx.createBuffer(2, len, audioCtx.sampleRate);
+                for (let i = 0; i < len; i++) {
+                    const d = Math.pow(1 - i / len, decay);
+                    imp.getChannelData(0)[i] = (Math.random() * 2 - 1) * d;
+                    imp.getChannelData(1)[i] = (Math.random() * 2 - 1) * d;
+                }
+                return imp;
+            }
+            reverbNode.buffer = createImpulseResponse(2.0, 2.0);
+
+            // State
+            let isRunning = false;
             let osmd = null;
             let isSheetMode = false;
             let lastParsedDoc = null;
-
-            // STATES
             let originalBPM = 120;
             let playbackSpeed = 1.0;
             let isMetroEnabled = false;
@@ -402,78 +373,26 @@
             let transposeSemitones = 0;
             let currentBeatsPerMeasure = 4;
             let currentBeatType = 4;
-            
-            // Loop State
-            let loopA = null; let loopB = null; let isLoopActive = false;
+            let loopA = null, loopB = null, isLoopActive = false;
 
-            // Backing
-            let backingBuffer = null; let backingSource = null; let backingGain = null;
-
-            // Restored Settings State
-            const appSettings = {
-                a4: 440,
-                gate: 0.003,
-                smoothing: 0.3,
-                targetMode: false,
-                targetNoteIndex: 69,
-                masterVol: 1.0
-            };
-
+            // UI Refs
             const ui = {
                 hz: document.getElementById('hz'), note: document.getElementById('note'), oct: document.getElementById('octave'), cents: document.getElementById('cents'),
                 noteRing: document.getElementById('noteRing'),
-                startBtn: document.getElementById('startBtn'), // FIXED: Added startBtn
-                btnPlay: document.getElementById('btnPlay'), btnStop: document.getElementById('btnStop'),
-                btnRec: document.getElementById('btnRec'),
+                startBtn: document.getElementById('startBtn'),
+                btnPlay: document.getElementById('btnPlay'), btnStop: document.getElementById('btnStop'), btnRec: document.getElementById('btnRec'),
                 btnLoopA: document.getElementById('btnLoopA'), btnLoopB: document.getElementById('btnLoopB'), btnLoopToggle: document.getElementById('btnLoopToggle'),
                 rateSlider: document.getElementById('rateSlider'), bpmSlider: document.getElementById('bpmSlider'),
                 transDisplay: document.getElementById('transDisplay'),
                 reverbToggle: document.getElementById('btnReverbToggle'), reverbMix: document.getElementById('reverbMix'),
-                volSlider: document.getElementById('volSlider'), a4Slider: document.getElementById('a4Slider'),
-                gateSlider: document.getElementById('gateSlider'), smoothSlider: document.getElementById('smoothSlider'),
-                targetToggle: document.getElementById('targetModeToggle'), targetSelect: document.getElementById('targetNoteSelect'),
                 keys: document.querySelectorAll('.key')
             };
 
-            // SETTINGS LISTENERS (Restored)
-            ui.volSlider.addEventListener('input', function() { 
-                appSettings.masterVol = parseFloat(this.value); 
-                document.getElementById('volValueDisplay').textContent = Math.round(appSettings.masterVol * 100) + "%";
-                masterGain.gain.setTargetAtTime(appSettings.masterVol, audioCtx.currentTime, 0.1); 
-            });
-            ui.a4Slider.addEventListener('input', function() { 
-                appSettings.a4 = parseInt(this.value); 
-                document.getElementById('a4Display').textContent = appSettings.a4 + " Hz"; 
-            });
-            ui.gateSlider.addEventListener('input', function() { 
-                appSettings.gate = parseFloat(this.value); 
-                document.getElementById('gateDisplay').textContent = (appSettings.gate*1000).toFixed(1); 
-            });
-            ui.smoothSlider.addEventListener('input', function() { 
-                appSettings.smoothing = parseFloat(this.value); 
-                document.getElementById('smoothDisplay').textContent = Math.round(appSettings.smoothing*100)+"%"; 
-            });
-
-            // TARGET MODE
-            function initTargetSelect() {
-                 ui.targetSelect.innerHTML = "";
-                 const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-                 for(let i=24; i<96; i++) {
-                     const opt = document.createElement('option');
-                     opt.value = i; opt.text = notes[i%12] + (Math.floor(i/12)-1);
-                     ui.targetSelect.appendChild(opt);
-                 }
-            }
-            initTargetSelect();
-            ui.targetToggle.onchange = (e) => { 
-                appSettings.targetMode = e.target.checked; 
-                ui.targetSelect.disabled = !e.target.checked; 
-            };
-            ui.targetSelect.onchange = (e) => { appSettings.targetNoteIndex = parseInt(e.target.value); };
-
-            // TRANSPOSE & REVERB
+            // Helpers
+            window.toggleKeyboard = () => { const el = document.getElementById('keyboardDrawer'); if(el) el.classList.toggle('open'); };
+            
             window.setTranspose = (delta) => {
-                if (delta === 0) transposeSemitones = 0; else transposeSemitones += delta;
+                transposeSemitones = delta === 0 ? 0 : transposeSemitones + delta;
                 ui.transDisplay.textContent = (transposeSemitones > 0 ? "+" : "") + transposeSemitones;
                 if(osmd) { osmd.Sheet.Transpose = transposeSemitones; osmd.updateGraphic(); osmd.render(); }
             };
@@ -482,59 +401,43 @@
             window.toggleReverb = () => {
                 isReverbOn = !isReverbOn;
                 reverbGain.gain.setTargetAtTime(isReverbOn ? parseFloat(ui.reverbMix.value) : 0, audioCtx.currentTime, 0.1);
-                ui.reverbToggle.textContent = isReverbOn ? "Disable Reverb" : "Enable Reverb";
-                ui.reverbToggle.classList.toggle('active', isReverbOn);
+                ui.reverbToggle.textContent = isReverbOn ? "Disable" : "Enable";
                 ui.reverbMix.disabled = !isReverbOn;
                 document.getElementById('reverbStatus').textContent = isReverbOn ? "On" : "Off";
             };
             ui.reverbMix.oninput = (e) => { if(isReverbOn) reverbGain.gain.value = e.target.value; };
 
-            // LOOP HANDLERS
-            ui.btnLoopA.onclick = () => {
-                loopA = playbackManager.currentScoreTime;
-                ui.btnLoopA.classList.add('set');
-                alert("Loop Start (A) Set: " + loopA.toFixed(2) + "s");
-            };
-            ui.btnLoopB.onclick = () => {
-                loopB = playbackManager.currentScoreTime;
-                ui.btnLoopB.classList.add('set');
-                alert("Loop End (B) Set: " + loopB.toFixed(2) + "s");
-            };
-            ui.btnLoopToggle.onclick = () => {
-                if (loopA !== null && loopB !== null && loopB > loopA) {
-                    isLoopActive = !isLoopActive;
-                    ui.btnLoopToggle.classList.toggle('active', isLoopActive);
-                } else { alert("Please set valid A and B points first."); }
+            window.setSpeed = (r) => { playbackSpeed = r; ui.rateSlider.value = r; document.getElementById('rateDisplay').textContent = r.toFixed(1)+"x"; };
+            ui.rateSlider.oninput = (e) => setSpeed(parseFloat(e.target.value));
+            
+            window.adjustBPM = (delta) => {
+                let current = Math.round(originalBPM * playbackSpeed);
+                window.setSpeed((current + delta) / originalBPM);
             };
 
-            // TRACK TOGGLES
-            document.getElementById('btnToggleMetro').onclick = function() {
-                isMetroEnabled = !isMetroEnabled;
-                this.classList.toggle('active', isMetroEnabled);
-                document.getElementById('metroToggle').checked = isMetroEnabled;
-            };
-            document.getElementById('btnToggleMelody').onclick = function() {
-                isMelodyEnabled = !isMelodyEnabled;
-                this.classList.toggle('active', isMelodyEnabled);
+            window.clearBackingTrack = () => {
+                if(backingSource) { try{backingSource.stop()}catch(e){}; backingSource=null; }
+                backingBuffer = null;
+                document.getElementById('backingTrackStatus').style.display = 'none';
             };
 
-            // PLAYBACK MANAGER
+            // Playback Manager
             const playbackManager = {
                 timeouts: [],
-                isPlaying: false, isPaused: false,
+                isPlaying: false,
+                isPaused: false,
                 currentScoreTime: 0,
                 
                 clearTimers: function() { this.timeouts.forEach(id => clearTimeout(id)); this.timeouts = []; },
                 
                 play: function(xmlDoc, startOffset = 0) {
-                    if(this.isPaused && startOffset===0) {
-                        audioCtx.resume(); this.isPaused=false; this.isPlaying=true;
+                    if(this.isPaused && startOffset === 0) {
+                        audioCtx.resume(); this.isPaused = false; this.isPlaying = true;
                         ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.add('playing');
                     } else {
                         this.clearTimers();
-                        if (isCountInEnabled && startOffset === 0 && !this.isCountingIn) {
-                            this.startCountIn(xmlDoc); return;
-                        }
+                        if (isCountInEnabled && startOffset === 0 && !this.isCountingIn) { this.startCountIn(xmlDoc); return; }
+                        
                         this.isPlaying = true; this.isPaused = false; this.isCountingIn = false;
                         ui.btnPlay.textContent = "⏸"; ui.btnPlay.classList.add('playing');
                         
@@ -544,11 +447,11 @@
                             backingSource = audioCtx.createBufferSource();
                             backingSource.buffer = backingBuffer;
                             backingSource.playbackRate.value = playbackSpeed;
-                            backingGain = audioCtx.createGain(); backingGain.gain.value = appSettings.masterVol;
-                            backingSource.connect(backingGain); backingGain.connect(masterGain); 
-                            if(analyser) backingGain.connect(analyser);
+                            backingGain = audioCtx.createGain(); backingGain.gain.value = 1.5;
+                            backingSource.connect(backingGain); backingGain.connect(masterGain);
                             backingSource.start(0, startOffset);
                         }
+
                         if(xmlDoc) playMusicXML(xmlDoc, startOffset);
                     }
                 },
@@ -575,10 +478,9 @@
 
                 stop: function() {
                     this.clearTimers(); this.isPlaying = false; this.isPaused = false;
-                    this.currentScoreTime = 0;
                     ui.btnPlay.textContent = "▶"; ui.btnPlay.classList.remove('playing');
-                    if (backingSource) try{backingSource.stop()}catch(e){};
-                    if (osmd && osmd.cursor) osmd.cursor.reset();
+                    if(backingSource) try{backingSource.stop()}catch(e){};
+                    if(osmd && osmd.cursor) osmd.cursor.reset();
                     document.querySelectorAll('.key.pressed').forEach(k=>k.classList.remove('pressed'));
                 }
             };
@@ -589,12 +491,11 @@
                 if (divTag) divisions = parseFloat(divTag.textContent);
 
                 let secPerBeat = (60 / originalBPM) / playbackSpeed;
-                const startTimeRef = audioCtx.currentTime + 0.1;
+                if(currentBeatType === 8) secPerBeat *= 0.5;
                 
                 // Metronome Schedule
                 let currentBeatScore = Math.floor(startOffset / secPerBeat) * secPerBeat;
-                let maxTime = startOffset + 300; 
-                while (currentBeatScore < maxTime) {
+                while (currentBeatScore < startOffset + 300) {
                     if (currentBeatScore >= startOffset) {
                         const delay = (currentBeatScore - startOffset) / playbackSpeed;
                         const beatIndex = Math.round(currentBeatScore / secPerBeat);
@@ -607,29 +508,31 @@
 
                 // Note Schedule
                 const parts = doc.querySelectorAll("part");
-                let maxGlobalTime = 0;
                 let isFirstNote = true;
 
                 parts.forEach((part, idx) => {
                     let currentTime = 0;
                     const measures = part.querySelectorAll("measure");
-                    measures.forEach((m, mIdx) => {
+                    measures.forEach((m) => {
                         let mCursor = 0;
                         m.childNodes.forEach(node => {
                             if (node.tagName === "note") {
                                 const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
                                 const durSec = (dur/divisions) * (60/originalBPM);
                                 const noteStart = currentTime + mCursor;
+                                
                                 if (!node.querySelector("chord")) mCursor += durSec;
 
                                 if (noteStart >= startOffset) {
                                     const delay = (noteStart - startOffset) / playbackSpeed;
                                     const realDur = durSec / playbackSpeed;
 
+                                    // Cursor Logic
                                     if (idx === 0 && !node.querySelector("chord")) {
                                         const ct = setTimeout(() => {
                                             if (playbackManager.isPlaying && osmd.cursor) {
-                                                playbackManager.currentScoreTime = noteStart;
+                                                playbackManager.currentScoreTime = noteStart; 
+                                                // Loop Check
                                                 if (isLoopActive && noteStart >= loopB) {
                                                     playbackManager.stop();
                                                     playbackManager.play(lastParsedDoc, loopA);
@@ -643,6 +546,7 @@
                                         playbackManager.timeouts.push(ct);
                                     }
 
+                                    // Sound Logic
                                     if (isMelodyEnabled && !node.querySelector("rest")) {
                                         const step = node.querySelector("step")?.textContent;
                                         const oct = node.querySelector("octave")?.textContent;
@@ -651,10 +555,10 @@
                                             let nn = step + (alt === "1" ? "#" : "");
                                             if(alt==="-1") nn = step==="B"?"A#":step==="E"?"D#":"G#";
                                             
-                                            // V10 Transpose + A4
-                                            let baseMidi = (parseInt(oct)+1)*12 + ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"].indexOf(nn);
+                                            // Transpose Calculation
+                                            let baseMidi = (parseInt(oct)+1)*12 + notes.indexOf(nn);
                                             let finalMidi = baseMidi + transposeSemitones;
-                                            let freq = appSettings.a4 * Math.pow(2, (finalMidi - 69) / 12); // Uses AppSettings
+                                            let freq = 440 * Math.pow(2, (finalMidi - 69) / 12);
                                             
                                             const st = setTimeout(() => {
                                                 if (playbackManager.isPlaying) playTone(freq, realDur, nn);
@@ -663,10 +567,18 @@
                                         }
                                     }
                                 }
-                                maxGlobalTime = Math.max(maxGlobalTime, noteStart + durSec);
+                            }
+                            // Restore Backup/Forward Logic
+                            else if (node.tagName === "backup") {
+                                const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
+                                mCursor -= (dur/divisions) * (60/originalBPM);
+                            }
+                            else if (node.tagName === "forward") {
+                                const dur = parseFloat(node.querySelector("duration")?.textContent || 0);
+                                mCursor += (dur/divisions) * (60/originalBPM);
                             }
                         });
-                        currentTime += mCursor;
+                        currentTime += Math.max(mCursor, 0);
                     });
                 });
             }
@@ -681,7 +593,6 @@
                 g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + dur);
                 osc.connect(g); g.connect(masterGain); 
                 osc.start(); osc.stop(audioCtx.currentTime + dur + 0.1);
-
                 const k = document.querySelector(`.key[data-note="${noteName}"]`);
                 if(k) { k.classList.add('pressed'); setTimeout(()=>k.classList.remove('pressed'), dur*1000); }
             }
@@ -696,47 +607,28 @@
                 osc.start(); osc.stop(audioCtx.currentTime + 0.05);
             }
 
+            // Drone Logic
             function toggleDrone(note, oct) {
                 if (droneOsc) {
                     droneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-                    droneOsc.stop(audioCtx.currentTime + 0.1);
-                    droneOsc = null;
+                    droneOsc.stop(audioCtx.currentTime + 0.1); droneOsc = null;
                     document.querySelectorAll('.key.drone').forEach(k=>k.classList.remove('drone'));
                     return;
                 }
                 const noteNum = (oct + 1) * 12 + notes.indexOf(note);
-                const freq = appSettings.a4 * Math.pow(2, (noteNum - 69) / 12); // Uses AppSettings
-                
-                droneOsc = audioCtx.createOscillator();
-                droneOsc.type = 'sawtooth';
-                droneOsc.frequency.value = freq;
+                const freq = 440 * Math.pow(2, (noteNum - 69) / 12);
+                droneOsc = audioCtx.createOscillator(); droneOsc.type = 'sawtooth'; droneOsc.frequency.value = freq;
                 droneGain = audioCtx.createGain();
-                const filter = audioCtx.createBiquadFilter();
-                filter.type = "lowpass"; filter.frequency.value = 800;
-                
+                const filter = audioCtx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 800;
                 droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
                 droneGain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.5);
-                
                 droneOsc.connect(filter); filter.connect(droneGain); droneGain.connect(masterGain);
                 droneOsc.start();
-                
                 const k = document.querySelector(`.key[data-note="${note}"]`);
                 if(k) k.classList.add('drone');
             }
 
-            // UI INIT
-            window.toggleKeyboard = () => document.getElementById('keyboardDrawer').classList.toggle('open');
-            const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-            
-            ui.keys.forEach(k => {
-                k.onmousedown = (e) => { 
-                    e.preventDefault();
-                    const n = k.getAttribute('data-note');
-                    toggleDrone(n, 3);
-                };
-            });
-
-            // MIC START & YIN ALGORITHM (Restored from v9)
+            // Initialization Event
             ui.startBtn.onclick = async () => {
                 await audioCtx.resume();
                 document.getElementById('startOverlay').style.display='none';
@@ -750,70 +642,63 @@
                 } catch(e) { alert("Mic Error: "+e); }
             };
 
-            let smoothedCents = 0;
+            // Tuner Loop
             function updatePitch() {
                 if(!isRunning) return;
                 analyser.getFloatTimeDomainData(dataArray);
-                
-                // RMS Gate Check
-                let sum=0; for(let i=0;i<dataArray.length;i+=4) sum+=dataArray[i]*dataArray[i];
-                const rms = Math.sqrt(sum/(dataArray.length/4));
-                
-                if (rms > appSettings.gate) {
-                    const pitch = detectPitch(dataArray, audioCtx.sampleRate);
-                    if (pitch > 50) {
-                        // Calc
-                        const noteFloat = 12 * (Math.log(pitch / appSettings.a4) / Math.log(2)) + 69;
-                        let rNote = Math.round(noteFloat);
-                        if(appSettings.targetMode) rNote = appSettings.targetNoteIndex;
-                        
-                        const cents = 1200 * Math.log(pitch / (appSettings.a4 * Math.pow(2, (rNote-69)/12))) / Math.log(2);
-                        smoothedCents = (smoothedCents * appSettings.smoothing) + (cents * (1 - appSettings.smoothing));
-                        
-                        const nName = notes[rNote % 12];
-                        const oct = Math.floor(rNote / 12) - 1;
-
-                        ui.hz.textContent = pitch.toFixed(1);
-                        ui.note.textContent = nName;
-                        ui.oct.textContent = oct;
-                        ui.cents.textContent = (smoothedCents>0?"+":"")+Math.round(smoothedCents);
-
-                        // Accuracy Ring
-                        if (Math.abs(smoothedCents) < 10) ui.noteRing.className = "note-ring perfect";
-                        else if (Math.abs(smoothedCents) < 25) ui.noteRing.className = "note-ring good";
-                        else ui.noteRing.className = "note-ring";
-
-                        document.querySelectorAll('.key.active').forEach(k=>k.classList.remove('active'));
-                        const k = document.querySelector(`.key[data-note="${nName}"]`);
-                        if(k) k.classList.add('active');
-                    }
-                } else {
-                    ui.noteRing.className = "note-ring";
-                }
-                if(isSheetMode) drawTunerOnCanvas();
+                const pitch = autoCorrelate(dataArray, audioCtx.sampleRate);
+                if (pitch > 50) {
+                    const noteFloat = 12 * (Math.log(pitch / 440) / Math.log(2)) + 69;
+                    const noteInt = Math.round(noteFloat);
+                    const cents = Math.floor((noteFloat - noteInt) * 100);
+                    const nName = notes[noteInt % 12];
+                    const oct = Math.floor(noteInt / 12) - 1;
+                    ui.hz.textContent = pitch.toFixed(1); ui.note.textContent = nName; ui.oct.textContent = oct; ui.cents.textContent = (cents>0?"+":"")+cents;
+                    if (Math.abs(cents) < 10) ui.noteRing.className = "note-ring perfect";
+                    else if (Math.abs(cents) < 25) ui.noteRing.className = "note-ring good";
+                    else ui.noteRing.className = "note-ring";
+                } else { ui.noteRing.className = "note-ring"; }
                 requestAnimationFrame(updatePitch);
             }
 
-            // YIN Algorithm (Restored)
-            function detectPitch(buffer, sampleRate) {
-                const threshold = 0.15; const halfSize = Math.floor(buffer.length / 2); const yinBuffer = new Float32Array(halfSize);
-                for (let t = 0; t < halfSize; t++) { let sum = 0; for (let i = 0; i < halfSize; i += 2) { const d = buffer[i] - buffer[i + t]; sum += d * d; } yinBuffer[t] = sum; }
-                yinBuffer[0] = 1; let runningSum = 0; for (let t = 1; t < halfSize; t++) { runningSum += yinBuffer[t]; yinBuffer[t] *= t / runningSum; }
-                let tau = -1; for (let t = 2; t < halfSize; t++) { if (yinBuffer[t] < threshold) { while (t + 1 < halfSize && yinBuffer[t + 1] < yinBuffer[t]) t++; tau = t; break; } }
-                if (tau === -1) return -1; const x0 = yinBuffer[tau - 1], x2 = yinBuffer[tau + 1], x1 = yinBuffer[tau];
-                return sampleRate / (tau + (x2 - x0) / (2 * (2 * x1 - x2 - x0)));
+            function autoCorrelate(buf, sr) {
+                let size = buf.length, rms = 0;
+                for (let i=0;i<size;i++) rms += buf[i]*buf[i];
+                if (Math.sqrt(rms/size) < 0.01) return -1;
+                let r1=0, r2=size-1, thres=0.2;
+                for (let i=0; i<size/2; i++) if (Math.abs(buf[i]) < thres) { r1=i; break; }
+                for (let i=1; i<size/2; i++) if (Math.abs(buf[size-i]) < thres) { r2=size-i; break; }
+                buf = buf.slice(r1, r2); size = buf.length;
+                let c = new Array(size).fill(0);
+                for (let i=0; i<size; i++) for (let j=0; j<size-i; j++) c[i] = c[i] + buf[j]*buf[j+i];
+                let d=0; while (c[d]>c[d+1]) d++;
+                let maxval=-1, maxpos=-1;
+                for (let i=d; i<size; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+                return sr/maxpos;
             }
 
-            function drawTunerOnCanvas() {
-               const canvas = document.getElementById('tunerCanvas');
-               const ctx = canvas.getContext('2d');
-               ctx.clearRect(0,0,canvas.width,canvas.height); // Simple clear for now in sheet mode
-            }
+            // Keyboard Events
+            ui.keys.forEach(k => {
+                k.onmousedown = (e) => { 
+                    e.preventDefault();
+                    toggleDrone(k.getAttribute('data-note'), 3);
+                };
+            });
 
-            // File & UI Logic
+            // Loop Events
+            ui.btnLoopA.onclick = () => { loopA = playbackManager.currentScoreTime; ui.btnLoopA.classList.add('set'); alert("Start (A) Set"); };
+            ui.btnLoopB.onclick = () => { loopB = playbackManager.currentScoreTime; ui.btnLoopB.classList.add('set'); alert("End (B) Set"); };
+            ui.btnLoopToggle.onclick = () => { isLoopActive = !isLoopActive; ui.btnLoopToggle.classList.toggle('active', isLoopActive); };
+
+            // Toggles
+            document.getElementById('btnToggleMetro').onclick = function() { isMetroEnabled = !isMetroEnabled; this.classList.toggle('active', isMetroEnabled); };
+            document.getElementById('btnToggleMelody').onclick = function() { isMelodyEnabled = !isMelodyEnabled; this.classList.toggle('active', isMelodyEnabled); };
+
+            // File Loading
             ui.btnLoad.onclick = () => document.getElementById('fileInput').click();
             document.getElementById('fileInput').onchange = (e) => {
                 const f = e.target.files[0];
+                if (!f) return;
                 if (f.name.endsWith('.wav') || f.name.endsWith('.mp3')) {
                     const r = new FileReader();
                     r.onload = async (ev) => {
@@ -830,28 +715,24 @@
                         const bpmTag = lastParsedDoc.querySelector("per-minute") || lastParsedDoc.querySelector("sound[tempo]");
                         if(bpmTag) originalBPM = parseFloat(bpmTag.textContent || bpmTag.getAttribute("tempo"));
                         document.getElementById('origBpmDisplay').textContent = "Ref: " + originalBPM;
+                        
                         if(!osmd) osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmdContainer", {autoResize:true, backend:"svg", drawingParameters:"compacttight"});
                         osmd.load(xml).then(() => { osmd.render(); ui.btnPlay.disabled=false; ui.btnStop.disabled=false; });
                     };
                     r.readAsText(f);
                 }
             };
-            
-            window.setSpeed = (r) => { playbackSpeed = r; ui.rateSlider.value = r; document.getElementById('rateDisplay').textContent = r.toFixed(1)+"x"; };
-            ui.rateSlider.oninput = (e) => setSpeed(parseFloat(e.target.value));
-            
-            document.getElementById('btnView').onclick = function() {
-                isSheetMode = !isSheetMode;
-                document.getElementById('mainStage').classList.toggle('sheet-active', isSheetMode);
-                this.textContent = isSheetMode ? "🎼" : "👁️";
-            };
 
+            // Misc UI
+            document.getElementById('btnView').onclick = function() { isSheetMode = !isSheetMode; document.getElementById('mainStage').classList.toggle('sheet-active', isSheetMode); this.textContent = isSheetMode ? "🎼" : "👁️"; };
             document.getElementById('openSettings').onclick = () => document.getElementById('settingsModal').style.display='block';
             document.getElementById('closeSettings').onclick = () => document.getElementById('settingsModal').style.display='none';
             document.getElementById('btnTempo').onclick = () => document.getElementById('tempoModal').style.display='block';
             document.getElementById('closeTempo').onclick = () => document.getElementById('tempoModal').style.display='none';
             ui.btnStop.onclick = () => playbackManager.stop();
             ui.btnPlay.onclick = () => isRunning ? (playbackManager.isPlaying ? playbackManager.stop() : playbackManager.play(lastParsedDoc)) : alert("Click Initialize First");
+            
+            console.log("System Ready v10.1");
         });
     </script>
 </body>
